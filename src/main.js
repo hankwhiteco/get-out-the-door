@@ -1594,8 +1594,8 @@ function isGoodGround(x, z) {
   if (h > 28) return false;
   // (not in or under a building: the cabin, the lodge, the picnic shelter: M30)
   if ((parkCabin?.floorAt(x, z) ?? lodge?.floorAt(x, z) ?? null) !== null || shelter?.isUnder(x, z)) return false;
-  // (and not right up against a cliff or a rock wall)
-  if ([[0.9, 0], [-0.9, 0], [0, 0.9], [0, -0.9]].some(([dx, dz]) => groundHeight(x + dx, z + dz) - h > 0.45)) return false;
+  // (and not right up against a rock wall: steeper than 45 degrees right beside it)
+  if ([[0.9, 0], [-0.9, 0], [0, 0.9], [0, -0.9]].some(([dx, dz]) => groundHeight(x + dx, z + dz) - h > 0.9)) return false;
   return Math.hypot(groundHeight(x + 1, z) - h, groundHeight(x, z + 1) - h) < 0.6;
 }
 const archeryScore = { shots: 0, points: 0, best: 0 };

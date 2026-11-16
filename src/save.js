@@ -45,6 +45,8 @@ function write(key, value) {
 // Load your save, and keep a copy of it as a backup, in case anything goes wrong while you
 // play (the game can be put back from the backup: see restoreBackup).
 export function loadGame() {
+  // (?test&fresh: a test as a brand-new hiker, without this browser's save)
+  if (TESTING && new URLSearchParams(location.search).has('fresh')) return null;
   const data = read(SAVE_KEY);
   if (data) write(BACKUP_KEY, data);
   return data;

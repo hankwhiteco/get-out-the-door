@@ -991,8 +991,9 @@ function chalet(b, env) {
   b.lamp(cozy, -1.9, F, 0.5);
   b.plant(cozy, -1.9, F, 3.0, 0.8);
   b.picture(cozy, -0.4, F + 1.7, -HD + 0.04, 0, [0xc8d8e8, 0xf4f4f4, 0xf2c037]);
-  b.recordPlayer(cozy, 1.9, F, 1.0, -Math.PI / 2);
-  b.spot('music', 1.3, 1.0, { upgrade: 'cozy' });
+  // (the record player on the far side from the ladder, so E by the ladder always climbs it)
+  b.recordPlayer(cozy, -2.0, F, -1.0, Math.PI / 2);
+  b.spot('music', -1.4, -1.0, { upgrade: 'cozy' });
   // Luxury: the four-poster up in the loft, a fur rug by the stove, string lights under the
   // front of the roof, and a wood-fired hot tub on the deck
   b.canopy(luxury, 1.5);
