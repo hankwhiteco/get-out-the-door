@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Get Out the Door</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Shown before you start and whenever the game is paused (Esc) -->
+    <div id="title-screen" class="hidden">
+      <div class="title-box">
+        <img class="title-logo" src="/icon.svg" alt="" />
+        <h1>Get Out the Door</h1>
+        <p class="title-tag">Hike, camp, fish and explore</p>
+        <p id="title-park"></p>
+        <button id="title-play">▶  Play</button>
+        <p class="title-hint">or press any key</p>
+      </div>
+    </div>
+    <div id="overlay">
+      <div class="card">
+        <h1 id="overlay-title">Get Out the Door</h1>
+        <p id="overlay-sub">Choose a trail to begin</p>
+        <div id="trail-list"></div>
+        <div id="card-actions">
+          <button id="friends-button">👥 Friends</button>
+          <button id="settings-button">⚙ Settings</button>
+        </div>
+        <div id="friends-panel" class="hidden">
+          <p class="friends-intro">Hike with friends online! Everyone who types the same room code meets up. Only people you give the code to can join.</p>
+          <label>Your name <input type="text" id="mp-name" maxlength="16" autocomplete="off" /></label>
+          <label>Room code <input type="text" id="mp-room" maxlength="12" autocomplete="off" /><button id="mp-new-room" title="Make up a new code">🎲 New</button></label>
+          <div class="friends-footer">
+            <span id="mp-status">Not connected</span>
+            <button id="mp-join">Join room</button>
+          </div>
+          <ul id="mp-people"></ul>
+          <label class="mp-check"><input type="checkbox" id="mp-quick-only" /> Quick chat only (no typing, and friends' typed messages are hidden)</label>
+        </div>
+        <div id="settings-panel" class="hidden">
+          <label>Field of view <input type="range" id="set-fov" min="55" max="100" step="1" /><span></span></label>
+          <label>Mouse speed <input type="range" id="set-look" min="0.3" max="2.5" step="0.1" /><span></span></label>
+          <label>Volume <input type="range" id="set-volume" min="0" max="1" step="0.05" /><span></span></label>
+          <label>Graphics <input type="range" id="set-graphics" min="0" max="1" step="1" /><span></span></label>
+          <div class="settings-footer">
+            <button id="save-file" title="Download your progress as a file: a backup, or to take it to another computer or to the online game">💾 Save to a file</button>
+            <button id="load-file" title="Carry on from a save file">📂 Load from a file</button>
+            <input type="file" id="load-file-input" accept=".json,application/json" hidden />
+          </div>
+          <div class="settings-footer">
+            <span id="save-status"></span>
+            <button id="reset-progress">Reset progress</button>
+          </div>
+        </div>
+        <p id="phone-note" class="hidden">📱 Get Out the Door needs a keyboard and mouse, so it's best played on a computer.</p>
+        <ul id="controls-list">
+          <li><b id="look-hint">Mouse</b> look around</li>
+          <li><b>W A S D</b> walk</li>
+          <li><b>← →</b> turn</li>
+          <li><b>Shift</b> walk carefully (slower)</li>
+          <li><b>E</b> sit, pitch tent, sleep, shop</li>
+          <li><b>Q</b> eat a snack</li>
+          <li><b>Z</b> your dog: sit and stay / whistle it back</li>
+          <li><b>B</b> throw a stick for your dog</li>
+          <li><b>1-9</b> pick a tool from your hotbar (or turn the mouse wheel)</li>
+          <li><b>H</b> put away what you're holding</li>
+          <li><b>Space</b> use · jump (horse) · spin (skates)</li>
+          <li><b>C</b> cook at your campfire (or E at a stove)</li>
+          <li><b>R</b> roast a marshmallow</li>
+          <li><b>T / Y</b> radio on/off, next song</li>
+          <li><b>I</b> backpack</li>
+          <li><b>J</b> journal</li>
+          <li><b>M</b> map</li>
+          <li><b>N</b> sound on / off</li>
+          <li><b>G</b> wave (with friends)</li>
+          <li><b>Enter</b> chat (with friends)</li>
+          <li><b>V</b> quick chat</li>
+          <li><b>O</b> wardrobe (your look)</li>
+          <li><b>Esc</b> pause</li>
+        </ul>
+        <p id="credits">Get Out the Door · every sound, song and picture in it is made with code · built with <a href="https://threejs.org" target="_blank" rel="noopener">Three.js</a></p>
+      </div>
+    </div>
+
+    <!-- Small dot in the middle of the screen so you know where you're looking -->
+    <div id="crosshair"></div>
+
+    <!-- Darkens the edges of the screen when you're tired -->
+    <div id="vignette"></div>
+
+    <!-- Energy bar and snacks, bottom left -->
+    <div id="hud">
+      <div class="hud-row" id="clock"></div>
+      <div class="hud-row">
+        <span class="hud-label">Energy</span>
+        <div class="bar"><div id="energy-fill"></div></div>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">Water</span>
+        <div class="bar"><div id="water-fill"></div></div>
+      </div>
+      <div class="hud-row hidden" id="dog-row">
+        <span class="hud-label" id="dog-label">Dog</span>
+        <div class="bar"><div id="dog-water-fill"></div></div>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">Snacks</span>
+        <span id="snack-count"></span>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">Pack</span>
+        <span id="pack"></span>
+      </div>
+      <div class="hud-row hidden" id="mp-hud"></div>
+    </div>
+
+    <!-- Looking through the binoculars (M26): two round eyepieces, and the animal's name -->
+    <div id="binoculars" class="hidden">
+      <svg viewBox="0 0 100 60" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <mask id="binocular-holes">
+            <rect width="100" height="60" fill="white" />
+            <circle cx="38.5" cy="30" r="20" fill="black" />
+            <circle cx="61.5" cy="30" r="20" fill="black" />
+          </mask>
+        </defs>
+        <rect width="100" height="60" fill="#0b0b0b" mask="url(#binocular-holes)" />
+      </svg>
+      <div id="binoculars-label"></div>
+    </div>
+
+    <!-- Looking through the telescope: a round eyepiece -->
+    <div id="eyepiece" class="hidden"></div>
+
+    <!-- Chat with friends (Enter) -->
+    <div id="chat-log"></div>
+    <input type="text" id="chat-input" class="hidden" maxlength="100" autocomplete="off" placeholder="Say something to your friends…  (Enter to send, Esc to cancel)" />
+    <div id="quick-chat" class="hidden"></div>
+
+    <!-- The radio, and the hotbar: your tools (1-9, the mouse wheel, or a click; see hotbar.js) -->
+    <div id="toolbar">
+      <button id="radio-button" title="Radio (T on/off, Y next song)">📻</button>
+      <div id="hotbar"></div>
+    </div>
+
+    <!-- "Press E to sit" style hints, bottom middle -->
+    <div id="prompt"></div>
+
+    <!-- Reeling in a big fish: the line's tension (see fishing.js) -->
+    <div id="reel" class="hidden">
+      <div id="reel-label"></div>
+      <div class="reel-bar"><div id="reel-tension"></div></div>
+      <div id="reel-help"></div>
+    </div>
+
+    <!-- Camera viewfinder (shown while the camera is raised with F) -->
+    <div id="viewfinder">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div id="viewfinder-label"></div>
+      <div id="viewfinder-help">Space  take photo   ·   X  selfie   ·   F  lower camera</div>
+    </div>
+    <div id="flash"></div>
+
+    <!-- Compass, top middle -->
+    <div id="compass-wrap">
+      <canvas id="compass" width="360" height="40"></canvas>
+      <div id="compass-goal"></div>
+    </div>
+
+    <!-- Paper map (M) -->
+    <div id="map" class="hidden">
+      <div class="map-page">
+        <header>
+          <h2>Valley Map</h2>
+          <span class="map-tip">🔍 Mouse wheel: zoom in and out · drag to move</span>
+          <button id="map-close">Back to hiking</button>
+        </header>
+        <canvas id="map-canvas" width="640" height="640"></canvas>
+        <div id="map-legend"></div>
+      </div>
+    </div>
+
+    <!-- The Outfitter (E at its counter): the park store -->
+    <div id="store" class="hidden">
+      <div class="store-body">
+        <div class="store-status">
+          <span id="store-title">🏕 Outfitter</span>
+          <span id="store-money"></span>
+        </div>
+        <div id="store-tabs">
+          <button data-tab="gear">🎒 Gear</button>
+          <button data-tab="clothes">👕 Clothes</button>
+          <button data-tab="food">🍫 Food &amp; drink</button>
+          <button data-tab="supplies">🪵 Supplies</button>
+          <button data-tab="sell">💵 Trading post</button>
+          <button data-tab="services">🔧 Services</button>
+        </div>
+        <div id="store-screen"></div>
+        <button id="store-close" class="store-close">Thanks, bye!  (Esc)</button>
+      </div>
+    </div>
+
+    <!-- Going to another park: the shuttle bus, or a road trip in your RV -->
+    <div id="wardrobe" class="hidden">
+      <div class="wardrobe-body">
+        <div class="store-status">
+          <span>👕 Wardrobe</span>
+        </div>
+        <div class="wardrobe-main">
+          <canvas id="wardrobe-preview"></canvas>
+          <div id="wardrobe-screen"></div>
+        </div>
+        <button id="wardrobe-close" class="store-close">Done  (O or Esc)</button>
+      </div>
+    </div>
+    <!-- Adopting a dog (M27: E at the dog yard beside the Outfitter) -->
+    <div id="adopt" class="hidden">
+      <div class="store-body">
+        <div class="store-status">
+          <span>🐕 Adopt a trail dog</span>
+          <span>free!</span>
+        </div>
+        <div id="adopt-screen"></div>
+        <button id="adopt-close" class="store-close">Not now  (Esc)</button>
+      </div>
+    </div>
+
+    <div id="party" class="hidden">
+      <div class="store-body">
+        <div class="store-status">
+          <span>🎉 Throw a picnic party</span>
+        </div>
+        <div id="party-screen"></div>
+        <button id="party-close" class="store-close">Not now  (Esc)</button>
+      </div>
+    </div>
+    <div id="invite-card" class="hidden">
+      <div id="invite-text"></div>
+      <div class="invite-buttons">
+        <button id="invite-go">Go  (Enter)</button>
+        <button id="invite-later">Maybe later  (Esc)</button>
+      </div>
+    </div>
+    <!-- Fishing contests (M25, contest.js): starting one at the Outfitter, a friend's invite,
+         the scoreboard while it runs, and the results -->
+    <div id="contest" class="hidden">
+      <div class="store-body">
+        <div class="store-status">
+          <span>🏆 Fishing contest</span>
+        </div>
+        <div id="contest-screen"></div>
+        <button id="contest-close" class="store-close">Not now  (Esc)</button>
+      </div>
+    </div>
+    <div id="contest-card" class="hidden">
+      <div id="contest-card-text"></div>
+      <div class="invite-buttons">
+        <button id="contest-go" class="go">Go  (Enter)</button>
+        <button id="contest-later">Maybe later  (Esc)</button>
+      </div>
+    </div>
+    <div id="contest-board" class="hidden"></div>
+    <div id="contest-results" class="hidden">
+      <div id="contest-results-text"></div>
+      <div class="invite-buttons">
+        <button id="contest-results-close" class="go">OK  (Enter)</button>
+      </div>
+    </div>
+    <div id="travel" class="hidden">
+      <div class="store-body">
+        <div class="store-status">
+          <span id="travel-title">🚌 Park shuttle</span>
+        </div>
+        <div id="travel-screen"></div>
+        <button id="travel-close" class="store-close">Not now  (Esc)</button>
+      </div>
+    </div>
+
+    <!-- Cooking (C at your campfire, or E at a stove: see cooking.js) -->
+    <div id="cooking" class="hidden">
+      <div class="store-body">
+        <div class="store-status">
+          <span id="cooking-title">🍳 Cooking</span>
+          <span id="cooking-where"></span>
+        </div>
+        <div id="cooking-screen"></div>
+        <button id="cooking-close" class="store-close">Done cooking  (Esc)</button>
+      </div>
+    </div>
+
+    <!-- Your backpack (I) -->
+    <div id="backpack" class="hidden">
+      <div class="store-body backpack-body">
+        <div class="store-status">
+          <span id="backpack-title">🎒 Your daypack</span>
+          <span id="backpack-used"></span>
+        </div>
+        <div id="backpack-chest" class="hidden"></div>
+        <div id="backpack-pack-label" class="backpack-label hidden">Your daypack</div>
+        <div id="backpack-grid"></div>
+        <div id="backpack-hotbar-label" class="backpack-label">Your hotbar: tools, picked with the number keys</div>
+        <div id="backpack-hotbar"></div>
+        <div id="backpack-detail"></div>
+        <button id="backpack-close" class="store-close">Close  (I or Esc)</button>
+      </div>
+    </div>
+
+    <!-- Radio controls (📻 button) -->
+    <div id="radio" class="hidden">
+      <div class="radio-body">
+        <div class="radio-title">📻 Trail Radio</div>
+        <div id="radio-screen"></div>
+        <button id="radio-close">Close</button>
+      </div>
+    </div>
+
+    <!-- Photo journal (J) -->
+    <div id="journal" class="hidden">
+      <div class="journal-page">
+        <header>
+          <h2>Journal</h2>
+          <span id="journal-count"></span>
+          <button id="journal-close">Back to hiking</button>
+        </header>
+        <div id="journal-level"></div>
+        <div id="journal-grid"></div>
+        <h3>The four seasons</h3>
+        <div id="journal-seasons-count" class="journal-subcount"></div>
+        <div id="journal-seasons"></div>
+        <h3>Wildlife</h3>
+        <div id="journal-wildlife-count" class="journal-subcount"></div>
+        <div id="journal-wildlife"></div>
+        <h3 id="journal-dog-title">Your dog</h3>
+        <div id="journal-dog"></div>
+        <h3>Catch log</h3>
+        <div id="journal-catches"></div>
+        <h3>Recipes</h3>
+        <div id="journal-recipes"></div>
+        <h3>Other photos</h3>
+        <div id="journal-roll"></div>
+      </div>
+    </div>
+
+    <!-- Black screen used when you go to sleep -->
+    <div id="fade"></div>
+
+    <!-- Short messages that fade away, top middle -->
+    <div id="toast"></div>
+
+    <!-- Levelling up: a big celebration, and what's new at the Outfitter -->
+    <div id="level-up" class="hidden">
+      <div id="level-up-title"></div>
+      <div id="level-up-new"></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

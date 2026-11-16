@@ -1,0 +1,9 @@
+node_modules
+dist
+.DS_Store
+saves
+
+# Kept on this computer only (not part of the published game)
+PLAN.md
+printout/
+.claude/

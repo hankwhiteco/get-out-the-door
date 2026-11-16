@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Get Out the Door: a wooden door swung open onto the trail outside -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6fb6e6"/>
+      <stop offset="0.62" stop-color="#bfe0ef"/>
+      <stop offset="1" stop-color="#f6d79a"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4e6c8"/>
+      <stop offset="1" stop-color="#e6cfa2"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5530"/>
+      <stop offset="1" stop-color="#b0743f"/>
+    </linearGradient>
+    <clipPath id="doorway">
+      <rect x="168" y="86" width="232" height="356"/>
+    </clipPath>
+  </defs>
+
+  <!-- The room: a warm wall, and a wooden floor -->
+  <rect width="512" height="512" rx="112" fill="url(#wall)"/>
+  <path d="M0 442 H512 V400 A112 112 0 0 1 400 512 H112 A112 112 0 0 1 0 400 Z" fill="#b98a58"/>
+
+  <!-- Outside, through the doorway -->
+  <g clip-path="url(#doorway)">
+    <rect x="168" y="86" width="232" height="356" fill="url(#sky)"/>
+    <circle cx="336" cy="214" r="34" fill="#ffd76a"/>
+    <path d="M150 300 L222 214 L262 258 L318 196 L376 262 L420 228 L420 460 L150 460 Z" fill="#9db8c9"/>
+    <path d="M300 214 L318 196 L336 214 L326 220 L318 212 L308 222 Z" fill="#f4f6f8"/>
+    <path d="M150 330 Q230 288 300 316 T420 304 L420 460 L150 460 Z" fill="#6f9e4c"/>
+    <path d="M150 372 Q260 340 420 360 L420 460 L150 460 Z" fill="#5a8a40"/>
+    <!-- pines on the hills -->
+    <g fill="#2f5d3a">
+      <path d="M190 330 l14 -40 l14 40 z"/>
+      <path d="M212 326 l11 -30 l11 30 z"/>
+      <path d="M352 318 l13 -36 l13 36 z"/>
+      <path d="M374 322 l10 -26 l10 26 z"/>
+      <path d="M176 380 l17 -46 l17 46 z"/>
+      <path d="M368 386 l18 -50 l18 50 z"/>
+    </g>
+    <!-- the trail, winding off into the distance -->
+    <path d="M244 442 C252 410 300 404 292 380 C286 362 256 360 268 340 C276 328 296 326 300 318 L306 318 C306 330 286 334 282 344 C276 360 306 364 312 382 C320 410 286 420 300 442 Z" fill="#e2c48c"/>
+  </g>
+
+  <!-- The door frame -->
+  <path d="M156 442 V74 H412 V442 H400 V86 H168 V442 Z" fill="#6b4226"/>
+  <!-- The door, swung open into the room (seen at an angle), with its panels and a brass knob -->
+  <path d="M168 86 L84 112 L84 470 L168 442 Z" fill="url(#panel)"/>
+  <path d="M152 112 L100 128 L100 252 L152 240 Z" fill="#7a4a28" opacity="0.55"/>
+  <path d="M152 268 L100 280 L100 430 L152 416 Z" fill="#7a4a28" opacity="0.55"/>
+  <circle cx="96" cy="292" r="9" fill="#e8c25a"/>
+  <!-- A doormat in front of the door -->
+  <path d="M196 452 H372 L388 478 H180 Z" fill="#c25a3c"/>
+</svg>

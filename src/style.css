@@ -1,0 +1,2436 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #9fc7e0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+canvas {
+  display: block;
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 45, 40, 0.45);
+  cursor: pointer;
+  z-index: 10; /* above the HUD */
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+/* While you have to pick a trail, clicking the background does nothing */
+#overlay.choosing {
+  cursor: default;
+}
+
+.card {
+  background: #f6f1e4;
+  color: #3b3a30;
+  padding: 28px 36px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.card h1 {
+  margin: 0 0 6px;
+  font-size: 32px;
+}
+
+.card p {
+  margin: 0 0 16px;
+  color: #6b6a5c;
+}
+
+.card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  line-height: 1.8;
+}
+
+.card b {
+  display: inline-block;
+  min-width: 90px;
+}
+
+/* Drag-to-look mode: show a grab hand so it's clear you can drag */
+body.drag-mode canvas {
+  cursor: grab;
+}
+body.drag-mode canvas:active {
+  cursor: grabbing;
+}
+
+#crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+
+/* ---------- HUD (energy, snacks, prompts) ---------- */
+#hud {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(246, 241, 228, 0.82);
+  color: #3b3a30;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 22px;
+}
+
+.hud-label {
+  width: 52px;
+  color: #6b6a5c;
+}
+
+.bar {
+  width: 130px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(59, 58, 48, 0.15);
+  overflow: hidden;
+}
+
+#energy-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: #6f9e4c;
+  transition: background 0.5s;
+}
+
+#energy-fill.low {
+  background: #d08a3a;
+}
+
+#prompt,
+#toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(30, 30, 25, 0.6);
+  color: #fff;
+  font-size: 15px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+
+#prompt {
+  bottom: 60px;
+}
+
+#toast {
+  top: 30px;
+  z-index: 25; /* above the store and the backpack, so you see what happened */
+}
+
+/* Reeling in a big fish (fishing.js): the line's tension, green when slack, red when tight */
+#reel {
+  position: fixed;
+  left: 50%;
+  bottom: 110px;
+  width: 320px;
+  transform: translateX(-50%);
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(30, 30, 25, 0.7);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+#reel.hidden {
+  display: none;
+}
+#reel-label {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.reel-bar {
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+#reel-tension {
+  height: 100%;
+  width: 0;
+  border-radius: 7px;
+}
+#reel-help {
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+#reel.running .reel-bar {
+  animation: reel-shake 0.15s infinite alternate;
+}
+@keyframes reel-shake {
+  from { transform: translateX(-3px); }
+  to { transform: translateX(3px); }
+}
+
+#prompt.show,
+#toast.show {
+  opacity: 1;
+}
+
+#vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(10, 15, 10, 0.85) 100%);
+  opacity: 0;
+}
+
+#clock {
+  color: #6b6a5c;
+  font-variant-numeric: tabular-nums;
+}
+
+#fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.2s;
+}
+
+#fade.show {
+  opacity: 1;
+}
+
+/* ---------- Camera viewfinder ---------- */
+#viewfinder {
+  position: fixed;
+  inset: 8% 10%;
+  pointer-events: none;
+  display: none;
+}
+
+body.photo-mode #viewfinder {
+  display: block;
+}
+
+/* Hide the normal HUD while the camera is up, so photos are clean */
+body.photo-mode #hud,
+body.photo-mode #crosshair,
+body.photo-mode #prompt {
+  display: none;
+}
+
+.corner {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border: 0 solid rgba(255, 255, 255, 0.85);
+  transition: border-color 0.2s;
+}
+.corner.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; }
+.corner.tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; }
+.corner.bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; }
+.corner.br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; }
+
+/* Corners turn gold when a sight is in view */
+#viewfinder.spotted .corner {
+  border-color: #ffd25a;
+}
+
+#viewfinder-label,
+#viewfinder-help {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+#viewfinder-label {
+  top: 12px;
+  font-size: 16px;
+  color: #ffe08a;
+}
+
+#viewfinder-help {
+  bottom: 12px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+#flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#flash.go {
+  animation: flash 0.4s ease-out;
+}
+
+@keyframes flash {
+  from { opacity: 0.8; }
+  to { opacity: 0; }
+}
+
+/* ---------- Journal ---------- */
+#journal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 28, 24, 0.55);
+}
+
+#journal.hidden {
+  display: none;
+}
+
+.journal-page {
+  width: min(900px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 24px 28px;
+  border-radius: 14px;
+  background: #f6f1e4;
+  color: #3b3a30;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.journal-page header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.journal-page h2 {
+  margin: 0;
+}
+
+.journal-page h3 {
+  margin: 22px 0 10px;
+  font-size: 15px;
+  color: #6b6a5c;
+}
+
+#journal-count {
+  color: #6b6a5c;
+  flex: 1;
+}
+
+#journal-close {
+  font: inherit;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #6f9e4c;
+  color: #fff;
+  cursor: pointer;
+}
+
+#journal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.slot {
+  margin: 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.slot img,
+.slot .empty {
+  display: block;
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.slot .empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7e0cf;
+  color: #b0a68c;
+  font-size: 34px;
+}
+
+.slot figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.slot:not(.found) figcaption {
+  color: #8a8672;
+  font-style: italic;
+}
+
+#journal-roll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #8a8672;
+  font-size: 13px;
+}
+
+#journal-roll img {
+  width: 140px;
+  border-radius: 4px;
+}
+
+/* ---------- Trail picker (on the start / pause card) ---------- */
+#trail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+
+.trail-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trail-button:hover:not(:disabled) {
+  border-color: #6f9e4c;
+}
+
+.trail-button.current {
+  border-color: #c9b98f;
+}
+
+.trail-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.trail-button .swatch {
+  flex: none;
+  width: 12px;
+  height: 36px;
+  border-radius: 4px;
+}
+
+.trail-button .name {
+  font-weight: 600;
+}
+
+.trail-button .details {
+  font-size: 13px;
+  color: #6b6a5c;
+}
+
+.trail-button .status {
+  margin-left: auto;
+  font-size: 13px;
+  white-space: nowrap;
+  color: #6f9e4c;
+}
+
+/* ---------- Compass ---------- */
+#compass-wrap {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  text-align: center;
+}
+
+#compass {
+  display: block;
+  border-radius: 8px;
+  background: rgba(246, 241, 228, 0.82);
+}
+
+#compass-goal {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+body.photo-mode #compass-wrap {
+  display: none;
+}
+
+/* Keep messages below the compass */
+#toast {
+  top: 82px;
+}
+
+/* ---------- Map ---------- */
+#map {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 28, 24, 0.55);
+}
+
+#map.hidden {
+  display: none;
+}
+
+.map-page {
+  /* (the whole screen: the map on the left, as big as fits, and the trails list beside it) */
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 8px 18px;
+  padding: 12px 18px;
+  background: #efe6cf;
+  color: #3b2a1a;
+  overflow: hidden;
+}
+
+.map-page header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.map-page h2 {
+  margin: 0;
+}
+
+#map-canvas {
+  display: block;
+  width: min(calc(100vh - 80px), calc(100vw - 300px));
+  aspect-ratio: 1;
+  border: 2px solid #b8a67e;
+  border-radius: 4px;
+}
+
+.map-page header {
+  grid-column: 1 / -1;
+}
+
+#map-legend {
+  align-self: start;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* (a narrow window: the trails list goes under the map) */
+@media (max-aspect-ratio: 5 / 4) {
+  .map-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+    overflow-y: auto;
+  }
+  #map-canvas {
+    width: min(calc(100vw - 40px), calc(100vh - 140px));
+    margin: 0 auto;
+  }
+}
+
+#map-legend .swatch {
+  display: inline-block;
+  width: 18px;
+  height: 4px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+#map-close {
+  font: inherit;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #6f9e4c;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Keep the start/pause card from growing taller than the window */
+.card {
+  box-sizing: border-box;
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+#controls-list {
+  columns: 2;
+  column-gap: 20px;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+#controls-list b {
+  min-width: 62px;
+}
+
+#water-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: #4f93ad;
+  transition: background 0.5s;
+}
+
+#water-fill.low {
+  background: #d08a3a;
+}
+
+/* ---------- Tool bar ---------- */
+#toolbar {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  gap: 6px;
+}
+
+#toolbar button {
+  padding: 6px 10px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: rgba(246, 241, 228, 0.82);
+  color: #3b3a30;
+  font: 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#toolbar button b {
+  color: #8a8672;
+  margin-right: 2px;
+}
+
+#toolbar button.selected {
+  border-color: #6f9e4c;
+  background: #fff;
+}
+
+body.photo-mode #toolbar {
+  display: none;
+}
+
+/* The hotbar: 9 square slots, like Minecraft's */
+#hotbar {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(40, 36, 28, 0.45);
+}
+
+#toolbar .hot-slot {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  background: rgba(246, 241, 228, 0.82);
+  font-size: 22px;
+  line-height: 40px;
+}
+
+/* Its number key, in the corner */
+#toolbar .hot-slot b {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  margin: 0;
+  font: 700 10px/1 system-ui, sans-serif;
+}
+
+#toolbar .hot-slot.selected {
+  border-color: #f2c037;
+  background: #fff;
+  transform: translateY(-3px);
+}
+
+#toolbar .hot-slot.empty {
+  background: rgba(246, 241, 228, 0.3);
+  cursor: default;
+}
+
+#toolbar .hot-slot.locked .hot-icon {
+  font-size: 15px;
+  vertical-align: top;
+}
+
+/* What a locked tool takes ("120 XP" or "$35") */
+.hot-lock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  color: #8a4a2c;
+  font: 700 8px/1 system-ui, sans-serif;
+  white-space: nowrap;
+}
+
+/* The parks' legends, in the catch log (M24) */
+.legends-heading {
+  margin-top: 10px;
+  font-weight: 600;
+  color: #8a6420;
+}
+
+#journal-catches {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #3b3a30;
+}
+
+/* ---------- Settings (on the start / pause card) ---------- */
+#card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px 0 10px;
+}
+
+#settings-button,
+#reset-progress {
+  font: 13px system-ui, sans-serif;
+  padding: 5px 12px;
+  border: 1px solid #c9b98f;
+  border-radius: 8px;
+  background: #fff;
+  color: #3b3a30;
+  cursor: pointer;
+}
+
+#settings-panel {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  font-size: 14px;
+}
+
+#settings-panel.hidden {
+  display: none;
+}
+
+#settings-panel label {
+  display: grid;
+  grid-template-columns: 120px 1fr 48px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+#settings-panel label span {
+  text-align: right;
+  color: #6b6a5c;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b6a5c;
+}
+
+#reset-progress {
+  border-color: #d9a59a;
+  color: #a3412f;
+}
+
+/* Bow aimed at a deer: a bigger, red crosshair */
+body.on-target #crosshair {
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: #e0443c;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+/* ---------- The Outfitter (store) ---------- */
+#store,
+#travel,
+#adopt,
+#party,
+#contest,
+#wardrobe,
+#backpack,
+#library,
+#cafe,
+#traverse,
+#cooking {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 28, 24, 0.45);
+}
+
+#store.hidden,
+#travel.hidden,
+#adopt.hidden,
+#party.hidden,
+#contest.hidden,
+#wardrobe.hidden,
+#backpack.hidden,
+#library.hidden,
+#cafe.hidden,
+#traverse.hidden,
+#cooking.hidden {
+  display: none;
+}
+
+.store-body {
+  display: flex;
+  flex-direction: column;
+  width: min(440px, calc(100vw - 32px));
+  height: min(640px, calc(100vh - 40px));
+  padding: 0 14px 14px;
+  box-sizing: border-box;
+  border: 6px solid #6b4a32; /* a wooden frame, like the shop's sign */
+  border-radius: 14px;
+  background: #f6f1e4;
+  color: #3b3a30;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+/* The shop's sign along the top: its name, and your money and level */
+.store-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 -14px 12px;
+  padding: 12px 16px;
+  background: #8a5f3c;
+  color: #f6f1e4;
+}
+
+#store-title {
+  font: 700 17px system-ui, sans-serif;
+}
+
+#store-money {
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+#store-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+#store-tabs button,
+.store-close {
+  flex: 1 1 auto;
+  padding: 7px 4px;
+  border: 0;
+  border-radius: 10px;
+  background: #e7e0cf;
+  color: inherit;
+  font: 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#store-tabs button.selected {
+  background: #6f9e4c;
+  color: #fff;
+}
+
+#store-screen,
+#travel-screen,
+#adopt-screen,
+#party-screen,
+#contest-screen,
+#cafe-screen,
+#cooking-screen {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.store-close {
+  flex: none;
+  margin-top: 10px;
+}
+
+.panel-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.panel-icon {
+  font-size: 24px;
+}
+
+.panel-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.panel-about,
+.panel-hint {
+  font-size: 12px;
+  color: #6b6a5c;
+}
+
+.panel-buy {
+  flex: none;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #6f9e4c;
+  color: #fff;
+  font: 600 12px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.panel-buy:disabled {
+  background: #c9c3b0;
+  cursor: default;
+}
+
+.panel-now {
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+}
+
+.panel-song {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.panel-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.panel-volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.panel-volume input {
+  flex: 1;
+}
+
+.panel-playlist {
+  margin: 10px 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.panel-playlist .playing {
+  font-weight: 700;
+  color: #4f7d36;
+}
+
+.panel-add {
+  display: block;
+  padding: 10px;
+  border: 2px dashed #c9b98f;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.panel-add input {
+  display: none;
+}
+
+#card-actions {
+  gap: 8px;
+}
+
+.panel-recall {
+  margin-left: 4px;
+  background: #3b3a30;
+}
+
+/* ---------- The backpack (I) ---------- */
+.backpack-body {
+  height: auto;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto; /* (a big backpack and a big chest together can be taller than the window) */
+}
+
+/* Rows of 9 slots, like Minecraft (a storage chest, the backpack, and your hotbar) */
+#backpack-chest,
+#backpack-grid,
+#backpack-hotbar {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr)); /* (minmax: so 9 always fit across) */
+  gap: 4px;
+  padding: 6px;
+  border-radius: 10px;
+  background: #8a7a62;
+}
+
+.pack-slot {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #c9bda4;
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pack-slot.tool {
+  background: #ddd3bc;
+}
+
+/* A storage chest's slots: a darker, woodier box */
+#backpack-chest {
+  margin-bottom: 4px;
+  background: #6b4a32;
+}
+
+#backpack-chest.hidden,
+#backpack-hotbar.hidden,
+.backpack-label.hidden {
+  display: none;
+}
+
+/* A hotbar slot's number key, in the corner */
+.pack-slot-key {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  color: #6b6a5c;
+  font: 700 10px system-ui, sans-serif;
+  pointer-events: none;
+}
+
+.backpack-label {
+  margin: 10px 2px 4px;
+  color: #6b6a5c;
+  font-size: 12px;
+}
+
+.pack-slot.selected {
+  outline: 3px solid #f2c037;
+}
+
+.pack-slot.drop-here {
+  background: #e0d6bf;
+}
+
+.pack-slot-icon {
+  font-size: 24px;
+  pointer-events: none;
+}
+
+/* How many are in the stack, in the corner */
+.pack-slot-count {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  color: #fff;
+  font: 700 12px system-ui, sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+#backpack-detail {
+  min-height: 92px;
+  margin-top: 10px;
+}
+
+.backpack-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.panel-buy.leave {
+  background: #a3572c;
+}
+
+/* ---------- Levelling up ---------- */
+#level-up {
+  position: fixed;
+  left: 50%;
+  top: 22%;
+  z-index: 26;
+  max-width: calc(100vw - 32px);
+  padding: 16px 28px;
+  border: 4px solid #f2c037;
+  border-radius: 16px;
+  background: rgba(246, 241, 228, 0.95);
+  color: #3b3a30;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: level-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+#level-up.hidden {
+  display: none;
+}
+
+#level-up-title {
+  font: 800 34px system-ui, sans-serif;
+  color: #c98a1e;
+}
+
+#level-up-new {
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+@keyframes level-pop {
+  from {
+    transform: translateX(-50%) scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* Confetti falling from the top of the screen */
+.confetti {
+  position: fixed;
+  top: -40px;
+  z-index: 26;
+  font-size: 24px;
+  pointer-events: none;
+  animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+  to {
+    transform: translateY(110vh) rotate(540deg);
+  }
+}
+
+/* ---------- Cooking (see cooking.js) ---------- */
+.recipe-needs {
+  font-size: 12px;
+  color: #6b6a5c;
+}
+
+.recipe-needs .missing {
+  color: #b5482c;
+  font-weight: 600;
+}
+
+.recipe-stars {
+  margin-left: 6px;
+  color: #e0a526;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.recipe-new {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #e7e0cf;
+  color: #6b6a5c;
+  font-size: 11px;
+}
+
+.recipe-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* One step of cooking: what to do, the food, and the thing to time it on */
+.cook-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  text-align: center;
+}
+
+.cook-progress {
+  font-size: 12px;
+  color: #6b6a5c;
+}
+
+.cook-how {
+  font-size: 14px;
+}
+
+.cook-food {
+  font-size: 64px;
+  line-height: 1;
+  transition: filter 0.1s;
+}
+
+/* The bar you time things on: a zone to hit, and a marker that moves along it */
+.cook-bar {
+  position: relative;
+  width: 100%;
+  height: 26px;
+  border-radius: 13px;
+  background: #e7e0cf;
+  overflow: hidden;
+}
+
+/* (how cooked it is: raw → golden → brown → burnt) */
+.cook-bar.doneness {
+  background: linear-gradient(to right, #f3e7cf 0%, #f0d9a2 45%, #e8b04a 62%, #c98a2e 80%, #6b3a1a 90%, #1e1712 100%);
+}
+
+.cook-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 3px solid #6f9e4c;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.cook-marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 6px;
+  margin-left: -3px;
+  border-radius: 3px;
+  background: #3b3a30;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.cook-hits {
+  min-height: 22px;
+  font-size: 18px;
+  letter-spacing: 4px;
+}
+
+.cook-action {
+  min-width: 160px;
+  padding: 10px 18px;
+  font-size: 15px;
+}
+
+.cook-feedback {
+  min-height: 22px;
+  font-weight: 700;
+  color: #4f7d36;
+}
+
+.cook-seasonings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cook-result-stars {
+  font-size: 34px;
+  color: #e0a526;
+  letter-spacing: 4px;
+}
+
+/* Recipe cards in the journal */
+#journal-recipes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.recipe-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.recipe-card.unknown {
+  background: rgba(255, 255, 255, 0.5);
+  color: #8a8672;
+}
+
+/* ---------- Locked items, ticks and progress bars ---------- */
+.panel-item.locked {
+  opacity: 0.6;
+}
+
+.panel-tick {
+  color: #4f7d36;
+  font-weight: 700;
+  font-size: 18px;
+  padding: 0 6px;
+}
+
+.panel-progress {
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 4px;
+  background: #e7e0cf;
+  overflow: hidden;
+}
+
+.panel-progress div {
+  height: 100%;
+  background: #f2c037;
+}
+
+#toolbar button.locked {
+  opacity: 0.6;
+}
+
+#toolbar #radio-button {
+  margin-right: 8px;
+}
+
+/* ---------- Radio ---------- */
+#radio {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 28, 24, 0.45);
+}
+
+#radio.hidden {
+  display: none;
+}
+
+.radio-body {
+  width: min(340px, calc(100vw - 32px));
+  padding: 16px;
+  border: 6px solid #6b4a32;
+  border-radius: 18px;
+  background: #e8dcc0;
+  color: #3b3a30;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+}
+
+.radio-title {
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  text-align: center;
+}
+
+#radio-close {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px;
+  border: 0;
+  border-radius: 10px;
+  background: #d2c3a0;
+  font: 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+/* While swimming, a watery tint at the bottom of the screen */
+body.swimming #vignette {
+  opacity: 1 !important;
+  background: linear-gradient(to top, rgba(40, 110, 150, 0.45), transparent 35%);
+}
+
+/* On narrower screens there isn't room for everything side by side along the bottom: the
+   hotbar goes in the middle, the hints just above it, and the HUD above them on the left */
+@media (max-width: 1300px) {
+  #toolbar {
+    right: auto;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+  }
+
+  #prompt {
+    bottom: 76px;
+  }
+
+  #hud {
+    bottom: 114px;
+  }
+}
+
+/* ---------- Park picker (on the start / pause card) ---------- */
+#park-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+#park-list button {
+  padding: 5px 10px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #fff;
+  color: #3b3a30;
+  font: 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#park-list button:hover {
+  border-color: #6f9e4c;
+}
+
+#park-list button.here {
+  background: #6f9e4c;
+  color: #fff;
+  cursor: default;
+}
+
+.panel-lock {
+  flex: none;
+  font-size: 12px;
+  color: #8a8672;
+}
+
+/* ---------- Friends (multiplayer) ---------- */
+#friends-button {
+  font: 13px system-ui, sans-serif;
+  padding: 5px 12px;
+  border: 1px solid #c9b98f;
+  border-radius: 8px;
+  background: #fff;
+  color: #3b3a30;
+  cursor: pointer;
+}
+
+#friends-panel {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  font-size: 14px;
+  cursor: default;
+}
+
+#friends-panel.hidden {
+  display: none;
+}
+
+#friends-panel .friends-intro {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+#friends-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#friends-panel input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid #c9b98f;
+  border-radius: 6px;
+  font: 14px system-ui, sans-serif;
+}
+
+#mp-room {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#friends-panel button {
+  font: 13px system-ui, sans-serif;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #e7e0cf;
+  color: #3b3a30;
+  cursor: pointer;
+}
+
+#mp-join {
+  background: #6f9e4c !important;
+  color: #fff !important;
+}
+
+#mp-join.leave {
+  background: #b8433a !important;
+}
+
+.friends-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b6a5c;
+}
+
+#mp-people {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+#mp-people:empty {
+  display: none;
+}
+
+.hud-row.hidden {
+  display: none;
+}
+
+#chat-log {
+  position: fixed;
+  left: 16px;
+  bottom: 190px;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#chat-log div {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(20, 28, 24, 0.55);
+  color: #fff;
+  font: 14px system-ui, sans-serif;
+  transition: opacity 1s;
+}
+
+#chat-log div.old {
+  opacity: 0;
+}
+
+#chat-input {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  width: min(480px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 2px solid #6f9e4c;
+  border-radius: 10px;
+  background: rgba(246, 241, 228, 0.95);
+  color: #3b3a30;
+  font: 15px system-ui, sans-serif;
+  z-index: 15;
+}
+
+#chat-input.hidden {
+  display: none;
+}
+
+/* Quick chat: ready-made phrases, picked with a number key */
+#quick-chat {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 32px));
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  padding: 10px 14px;
+  border: 2px solid #6f9e4c;
+  border-radius: 10px;
+  background: rgba(246, 241, 228, 0.95);
+  color: #3b3a30;
+  font: 14px system-ui, sans-serif;
+  z-index: 15;
+}
+
+#quick-chat.hidden {
+  display: none;
+}
+
+#quick-chat b {
+  display: inline-block;
+  min-width: 1.4em;
+  color: #6f9e4c;
+}
+
+#quick-chat .quick-chat-title {
+  grid-column: 1 / -1;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+#friends-panel .mp-check {
+  align-items: flex-start;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+#friends-panel .mp-check input {
+  flex: none;
+  margin-top: 2px;
+}
+
+#mp-people button {
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+/* ---------- Telescope eyepiece ---------- */
+#eyepiece {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 0, transparent 34vmin, rgba(0, 0, 0, 0.6) 36vmin, #000 39vmin);
+  z-index: 4;
+}
+
+#eyepiece.hidden {
+  display: none;
+}
+/* Looking through the telescope or the binoculars: nothing else on the screen in the way
+   (just the instructions, on top of the dark edge) */
+body.looking #hud,
+body.looking #toolbar,
+body.looking #compass-wrap,
+body.looking #crosshair {
+  display: none;
+}
+body.looking #prompt {
+  z-index: 5;
+}
+
+/* ---------- Your level and XP (in the journal) ---------- */
+#journal-level {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+}
+
+#journal-level .panel-progress {
+  margin: 6px 0 10px;
+}
+
+#journal-level ul {
+  margin: 0;
+  padding-left: 18px;
+  columns: 2;
+  column-gap: 24px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #6b6a5c;
+}
+
+@media (max-width: 520px) {
+  #journal-level ul {
+    columns: 1;
+  }
+}
+
+/* ---------- Picnic parties (M22): who to invite, and an invitation arriving ---------- */
+#party-screen .panel-item input[type='checkbox'],
+#contest-screen .panel-item input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+#invite-card,
+#contest-card,
+#contest-results {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 3px solid #f2c037;
+  border-radius: 12px;
+  background: rgba(246, 241, 228, 0.97);
+  color: #3b3a30;
+  font: 16px system-ui, sans-serif;
+  text-align: center;
+  z-index: 25;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+#invite-card.hidden,
+#contest-card.hidden,
+#contest-results.hidden,
+#contest-board.hidden {
+  display: none;
+}
+
+.invite-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.invite-buttons button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 8px;
+  font: bold 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#invite-go,
+.invite-buttons .go {
+  background: #6f9e4c;
+  color: #fff;
+}
+
+#invite-later,
+#contest-later {
+  background: #ddd3bb;
+  color: #3b3a30;
+}
+
+/* ---------- The wardrobe (M23): your hiker turning on the left, the choices on the right ---------- */
+.wardrobe-body {
+  display: flex;
+  flex-direction: column;
+  width: min(820px, calc(100vw - 32px));
+  height: min(620px, calc(100vh - 40px));
+  padding: 0 14px 14px;
+  box-sizing: border-box;
+  color: #fff;
+}
+
+.wardrobe-main {
+  flex: 1;
+  display: flex;
+  gap: 14px;
+  min-height: 0;
+}
+
+#wardrobe-preview {
+  width: 260px;
+  height: 100%;
+  flex: none;
+  border-radius: 12px;
+  background: linear-gradient(#bcd9ee, #e9f2e0);
+}
+
+#wardrobe-screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(246, 241, 228, 0.97);
+  color: #3b3a30;
+}
+
+.wardrobe-section {
+  margin-bottom: 12px;
+}
+
+.wardrobe-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.wardrobe-style {
+  padding: 5px 10px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #ddd3bb;
+  color: #3b3a30;
+  font: 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.wardrobe-swatch {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wardrobe-style.locked {
+  opacity: 0.6;
+}
+
+.wardrobe-style.chosen,
+.wardrobe-swatch.chosen {
+  border-color: #3b3a30;
+  box-shadow: 0 0 0 2px #f2c037;
+}
+
+@media (max-width: 640px) {
+  .wardrobe-main {
+    flex-direction: column;
+  }
+  #wardrobe-preview {
+    width: 100%;
+    height: 200px;
+  }
+}
+
+/* ---------- The title screen (M23): the game's name over the park, before the start card ---------- */
+#title-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(20, 30, 25, 0.05) 30%, rgba(20, 30, 25, 0.55) 100%);
+  cursor: pointer;
+}
+
+#title-screen.hidden {
+  display: none;
+}
+
+.title-box {
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.45);
+}
+
+.title-box h1 {
+  margin: 0;
+  font: 800 clamp(38px, 8.5vw, 100px) / 1.05 system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.title-tag {
+  margin: 10px 0 0;
+  font: 500 clamp(16px, 2.6vw, 24px) system-ui, sans-serif;
+}
+
+#title-park {
+  margin: 18px 0 26px;
+  font: 15px system-ui, sans-serif;
+  opacity: 0.9;
+}
+
+#title-play {
+  padding: 12px 34px;
+  border: 0;
+  border-radius: 999px;
+  background: #6f9e4c;
+  color: #fff;
+  font: bold 20px system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.title-hint {
+  margin: 12px 0 0;
+  font: 13px system-ui, sans-serif;
+  opacity: 0.8;
+}
+
+/* (while the title screen's up, the game's own HUD hides) */
+body.titling #hud,
+body.titling #toolbar,
+body.titling #compass-wrap,
+body.titling #prompt {
+  display: none;
+}
+
+/* The game's logo, above its name on the title screen */
+.title-logo {
+  display: block;
+  width: clamp(88px, 15vw, 150px);
+  height: auto;
+  margin: 0 auto 14px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.35));
+}
+
+/* ---------- Fishing contests (M25, contest.js) ---------- */
+/* How long: three buttons, the chosen one highlighted */
+.contest-lengths {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 12px;
+}
+.contest-lengths button {
+  flex: 1;
+  padding: 10px 0;
+  border: 2px solid #c9b98f;
+  border-radius: 8px;
+  background: #fff;
+  color: #3b3a30;
+  font: bold 15px system-ui, sans-serif;
+  cursor: pointer;
+}
+.contest-lengths button.chosen {
+  border-color: #6f9e4c;
+  background: #e4efd8;
+}
+/* The scoreboard, top right, while a contest runs */
+#contest-board {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 230px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(30, 30, 25, 0.7);
+  color: #fff;
+  font: 14px system-ui, sans-serif;
+  pointer-events: none;
+}
+#contest-board .contest-title {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+#contest-board .contest-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+#contest-board .contest-row.you {
+  color: #f2c037;
+  font-weight: 700;
+}
+#contest-board .contest-news {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+#contest-board.ending .contest-title span:last-child {
+  color: #ff8a6a;
+}
+/* The results card */
+#contest-results-text .contest-row {
+  display: flex;
+  justify-content: space-between;
+  max-width: 300px;
+  margin: 0 auto;
+  padding: 2px 0;
+}
+#contest-results-text .contest-row.you {
+  font-weight: 700;
+}
+#contest-results-text h3 {
+  margin: 0 0 8px;
+}
+#contest-results-text p {
+  margin: 10px 0 0;
+}
+
+/* ---------- Binoculars (M26): two round eyepieces, and the name of what you're looking at ---------- */
+#binoculars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+#binoculars.hidden {
+  display: none;
+}
+#binoculars svg {
+  width: 100%;
+  height: 100%;
+}
+#binoculars-label {
+  position: absolute;
+  left: 50%;
+  bottom: 13vh;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(30, 30, 25, 0.75);
+  color: #fff;
+  font: 600 16px system-ui, sans-serif;
+  white-space: nowrap;
+}
+#binoculars-label:empty {
+  display: none;
+}
+
+/* ---------- The wildlife page in the journal (M26) ---------- */
+.journal-subcount {
+  font-size: 13px;
+  color: #6b6a5c;
+  margin: -4px 0 8px;
+}
+#journal-wildlife {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+#journal-wildlife figure {
+  margin: 0;
+  padding: 6px;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  text-align: center;
+  color: #3b3a30;
+}
+#journal-wildlife figure img {
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  object-fit: cover;
+  border-radius: 5px;
+  display: block;
+}
+#journal-wildlife figure .empty {
+  aspect-ratio: 8 / 5;
+  border-radius: 5px;
+  background: #ece6d6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  opacity: 0.6;
+}
+#journal-wildlife figure.missing figcaption {
+  color: #8a8778;
+}
+
+/* ---------- Adopting a dog (M27) ---------- */
+.adopt-breed {
+  width: 100%;
+  border: 2px solid transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.adopt-breed.chosen {
+  border-color: #6f9e4c;
+  background: #eef5e6;
+}
+.adopt-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.adopt-name label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.adopt-name input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid #c9c3b0;
+  border-radius: 8px;
+  font: 15px system-ui, sans-serif;
+}
+.adopt-go {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+}
+/* Your dog's water, under yours (it flashes when it's thirsty) */
+#dog-row.hidden {
+  display: none;
+}
+#dog-water-fill {
+  height: 100%;
+  width: 100%;
+  background: #7fb6e8;
+  border-radius: inherit;
+  transition: width 0.4s;
+}
+#dog-row.thirsty #dog-water-fill {
+  background: #e0883c;
+  animation: dog-thirsty 1s ease-in-out infinite alternate;
+}
+@keyframes dog-thirsty {
+  from { opacity: 1; }
+  to { opacity: 0.45; }
+}
+/* The journal's page about your dog */
+#journal-dog {
+  font-size: 14px;
+  line-height: 1.5;
+}
+#journal-dog .dog-finds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+#journal-dog .dog-finds span {
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+}
+#journal-dog .dog-finds span.missing {
+  color: #9a988a;
+}
+
+/* ---------- The four seasons in the journal (M28) ---------- */
+#journal-seasons .season-row {
+  display: grid;
+  grid-template-columns: 9em repeat(4, 1fr);
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+#journal-seasons .season-park {
+  font-size: 13px;
+  font-weight: 600;
+}
+#journal-seasons figure {
+  margin: 0;
+  text-align: center;
+}
+#journal-seasons img,
+#journal-seasons .empty {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7e0cf;
+  font-size: 20px;
+}
+#journal-seasons figcaption {
+  font-size: 11px;
+  color: #6b6a5c;
+}
+@media (max-width: 600px) {
+  #journal-seasons .season-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  #journal-seasons .season-park {
+    grid-column: 1 / -1;
+  }
+}
+
+.map-tip {
+  margin-left: auto;
+  margin-right: 14px;
+  font-size: 13px;
+  color: #6b5a40;
+}
+
+/* ---------- How-to books: the trail library, and your cabin's bookshelf (books.js) ---------- */
+.library-body {
+  width: min(560px, calc(100vw - 32px));
+}
+#library-screen {
+  flex: 1;
+  overflow-y: auto;
+}
+.library-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 10px;
+  padding: 4px 2px 10px;
+}
+.library-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 132px;
+  padding: 12px 8px 10px;
+  border: none;
+  border-left: 8px solid rgba(0, 0, 0, 0.25); /* (the spine) */
+  border-radius: 4px 10px 10px 4px;
+  background: var(--book);
+  color: #fffaf0;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s;
+}
+.library-book:hover {
+  transform: translateY(-3px) rotate(-1deg);
+}
+.library-book.read {
+  opacity: 0.8;
+}
+.library-icon {
+  font-size: 34px;
+}
+.library-title {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: center;
+}
+.library-tick {
+  margin-top: auto;
+  font-size: 12px;
+  opacity: 0.9;
+}
+.library-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  padding: 18px 20px 14px;
+  box-sizing: border-box;
+  border-left: 10px solid var(--book);
+  border-radius: 6px;
+  background: #fffaf0;
+  box-shadow: inset 0 0 30px rgba(140, 110, 60, 0.15);
+}
+.library-pic {
+  font-size: 64px;
+  text-align: center;
+  line-height: 1.3;
+  padding: 10px 0;
+}
+.library-text {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.55;
+  flex: 1;
+}
+.library-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.library-dots {
+  color: #8a5f3c;
+  letter-spacing: 2px;
+}
+
+/* ---------- The Ridge to Sea Traverse: its board and certificate (traverse.js, M30) ---------- */
+.traverse-scroll {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 13px;
+}
+.traverse-intro {
+  margin: 6px 0;
+  color: #4a4a3c;
+  line-height: 1.4;
+}
+.traverse-days {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+.traverse-day {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border-left: 5px solid #c9c3b0;
+}
+.traverse-day span {
+  color: #6b6a5c;
+  font-size: 12px;
+}
+.traverse-day.now {
+  border-left-color: #e8743c;
+}
+.traverse-day.done {
+  border-left-color: #6f9e4c;
+}
+.traverse-scroll h4 {
+  margin: 12px 0 6px;
+}
+.traverse-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: #fff;
+}
+.traverse-item > span {
+  flex: none;
+  font-size: 16px;
+}
+.traverse-item span span,
+.traverse-item div span {
+  color: #6b6a5c;
+  font-size: 12px;
+}
+.traverse-item.have {
+  background: #eef6e6;
+}
+.traverse-status {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff4e0;
+}
+.traverse-body .go {
+  flex: none;
+  margin-top: 8px;
+}
+.traverse-certificate {
+  width: min(520px, calc(100vw - 32px));
+  padding: 26px 30px;
+  box-sizing: border-box;
+  text-align: center;
+  border: 10px double #8a6a3a;
+  border-radius: 6px;
+  background: #fbf3dc;
+  color: #3e2c1e;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.traverse-certificate h2 {
+  margin: 6px 0 2px;
+  font-size: 28px;
+  letter-spacing: 1px;
+}
+.traverse-certificate h3 {
+  margin: 4px 0 10px;
+  font-size: 22px;
+  color: #6b3f22;
+}
+.cert-seal {
+  font-size: 40px;
+}
+.cert-small {
+  font-size: 13px;
+  font-style: italic;
+  color: #7a6a52;
+}
+.cert-name {
+  margin: 6px 0;
+  font-size: 26px;
+  font-weight: bold;
+  border-bottom: 1px solid #c8b080;
+  display: inline-block;
+  padding: 0 18px 2px;
+}
+.cert-facts {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 14px 0 18px;
+}
+.cert-facts div {
+  display: flex;
+  flex-direction: column;
+}
+.cert-facts b {
+  font-size: 20px;
+}
+.cert-facts span {
+  font-size: 11px;
+  color: #7a6a52;
+}
+
+/* ---------- The note for phones, and the credits (M33) ---------- */
+#phone-note {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff4e0;
+  font-size: 13px;
+}
+#phone-note.hidden {
+  display: none;
+}
+#credits {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #8a8a7a;
+  text-align: center;
+}
+#credits a {
+  color: inherit;
+}
