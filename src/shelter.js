@@ -28,6 +28,16 @@ export function createShelter({ scene, groundHeight, addObstacle, spot }) {
   // The pad sits level with the highest corner (its posts reach down to the ground)
   const corners = [[-WIDTH / 2, -LENGTH / 2], [WIDTH / 2, -LENGTH / 2], [WIDTH / 2, LENGTH / 2], [-WIDTH / 2, LENGTH / 2]].map(([lx, lz]) => toWorld(lx, lz));
   const floor = Math.max(...corners.map((p) => groundHeight(p.x, p.z))) + 0.15;
+  // (and its platform reaches right down to the lowest ground under it, so on a slope it never
+  // hangs in the air: M30)
+  let low = Infinity;
+  for (let lx = -WIDTH / 2 - 0.2; lx <= WIDTH / 2 + 0.21; lx += (WIDTH + 0.4) / 6) {
+    for (let lz = -LENGTH / 2 - 0.2; lz <= LENGTH / 2 + 0.21; lz += (LENGTH + 0.4) / 8) {
+      const p = toWorld(lx, lz);
+      low = Math.min(low, groundHeight(p.x, p.z));
+    }
+  }
+  const DEPTH = Math.max(1.2, floor - low + 0.4);
   group.position.set(spot.x, floor, spot.z);
   group.rotation.y = spot.heading;
   const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
@@ -44,8 +54,8 @@ export function createShelter({ scene, groundHeight, addObstacle, spot }) {
 
   // The platform it stands on: stacked logs, deep enough to reach the ground on a slope (M30:
   // wood, not grey concrete), with a plank floor on top
-  box(WIDTH + 0.4, 1.2, LENGTH + 0.4, 0x6b4a32, 0, -0.6, 0);
-  for (let y = -0.17; y > -1.2; y -= 0.28) box(WIDTH + 0.43, 0.04, LENGTH + 0.43, 0x3e2a1a, 0, y, 0); // (the lines between the logs)
+  box(WIDTH + 0.4, DEPTH, LENGTH + 0.4, 0x6b4a32, 0, -DEPTH / 2, 0);
+  for (let y = -0.17; y > -DEPTH; y -= 0.28) box(WIDTH + 0.43, 0.04, LENGTH + 0.43, 0x3e2a1a, 0, y, 0); // (the lines between the logs)
   box(WIDTH + 0.3, 0.03, LENGTH + 0.3, 0x9a7350, 0, 0.005, 0); // (the planks)
   // Six posts, beams along the top, and a pitched green roof
   for (const x of [-3.2, 3.2]) {
