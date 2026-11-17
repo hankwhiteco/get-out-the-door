@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Get Out the Door players</title>
+    <link rel="icon" href="icon.svg" />
+    <!--
+      How many people play Get Out the Door. The published game adds 1 to a free public counter
+      (Abacus: https://abacus.jsn.cam) when someone opens it, and 1 more when a brand-new hiker
+      starts (see src/playerCount.js). This page just reads those numbers.
+    -->
+    <style>
+      :root {
+        color-scheme: light;
+        --surface: #fcfcfb;
+        --card: #ffffff;
+        --line: #e6e4dd;
+        --text-primary: #0b0b0b;
+        --text-secondary: #52514e;
+        --text-muted: #7a7974;
+        --bar: #008300;
+        --bar-hover: #2a9a2a;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:where(:not([data-theme='light'])) {
+          color-scheme: dark;
+          --surface: #1a1a19;
+          --card: #232322;
+          --line: #3a3a37;
+          --text-primary: #f0efec;
+          --text-secondary: #c3c2b7;
+          --text-muted: #9b9a92;
+          --bar: #2f9a2f;
+          --bar-hover: #4cb24c;
+        }
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --surface: #1a1a19;
+        --card: #232322;
+        --line: #3a3a37;
+        --text-primary: #f0efec;
+        --text-secondary: #c3c2b7;
+        --text-muted: #9b9a92;
+        --bar: #2f9a2f;
+        --bar-hover: #4cb24c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--surface);
+        color: var(--text-primary);
+        font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 16px 48px;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 4px;
+      }
+      .sub {
+        color: var(--text-secondary);
+        margin: 0 0 24px;
+      }
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+      .tile {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .tile .label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+      .tile .value {
+        font-size: 2.4rem;
+        font-weight: 700;
+        line-height: 1.15;
+        font-variant-numeric: tabular-nums;
+      }
+      .tile .note {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 0 0 2px;
+      }
+      .chart-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+        position: relative;
+      }
+      .chart-sub {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin: 0 0 12px;
+      }
+      .chart {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 6px;
+        height: 200px;
+      }
+      .ticks {
+        position: relative;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+      }
+      .ticks span {
+        position: absolute;
+        right: 0;
+        transform: translateY(50%);
+      }
+      .plot {
+        position: relative;
+        border-bottom: 1px solid var(--text-muted);
+      }
+      .grid {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid var(--line);
+      }
+      .bars {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+      }
+      .slot {
+        flex: 1;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        cursor: default;
+        outline: none;
+      }
+      .bar {
+        width: min(24px, 70%);
+        background: var(--bar);
+        border-radius: 4px 4px 0 0;
+        min-height: 0;
+      }
+      .slot:hover .bar,
+      .slot:focus-visible .bar {
+        background: var(--bar-hover);
+      }
+      .slot:focus-visible {
+        box-shadow: inset 0 0 0 2px var(--text-secondary);
+        border-radius: 4px;
+      }
+      .days {
+        display: flex;
+        margin-left: 40px;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        margin-top: 4px;
+      }
+      .days span {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .days span:last-child {
+        text-align: right;
+      }
+      .tip {
+        position: absolute;
+        pointer-events: none;
+        background: var(--text-primary);
+        color: var(--surface);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        transform: translate(-50%, -100%);
+        display: none;
+      }
+      .tip strong {
+        font-size: 1rem;
+      }
+      details {
+        margin-top: 12px;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+      table {
+        border-collapse: collapse;
+        margin-top: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 3px 18px 3px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      td.n {
+        text-align: right;
+      }
+      .about {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-top: 28px;
+      }
+      .about li {
+        margin-bottom: 4px;
+      }
+      .error {
+        color: #b3261e;
+      }
+      a {
+        color: inherit;
+      }
+      @media (max-width: 520px) {
+        .days span:nth-child(odd) {
+          visibility: hidden;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>🥾 Get Out the Door players</h1>
+      <p class="sub" id="status">Counting…</p>
+
+      <div class="tiles">
+        <div class="tile">
+          <div class="label">Hikers so far</div>
+          <div class="value" id="hikers">–</div>
+          <div class="note">new hikers who started the game</div>
+        </div>
+        <div class="tile">
+          <div class="label">Times played</div>
+          <div class="value" id="plays">–</div>
+          <div class="note">times the game was opened</div>
+        </div>
+        <div class="tile">
+          <div class="label">Today</div>
+          <div class="value" id="today-plays">–</div>
+          <div class="note" id="today-note">plays</div>
+        </div>
+      </div>
+
+      <section class="chart-card" aria-labelledby="chart-title">
+        <h2 id="chart-title">Times played each day</h2>
+        <p class="chart-sub">The last 14 days</p>
+        <div class="chart">
+          <div class="ticks" id="ticks"></div>
+          <div class="plot" id="plot">
+            <div class="bars" id="bars"></div>
+          </div>
+        </div>
+        <div class="days" id="days"></div>
+        <div class="tip" id="tip"></div>
+        <details>
+          <summary>Show as a table</summary>
+          <table>
+            <thead>
+              <tr><th>Day</th><th>Times played</th></tr>
+            </thead>
+            <tbody id="table"></tbody>
+          </table>
+        </details>
+      </section>
+
+      <ul class="about">
+        <li>Only the published game counts: not playing on your own computer, and never <code>?test</code>. No cookies, and nothing about the player is sent: the game just adds 1.</li>
+        <li>It's a rough count. Someone who plays on two computers, or presses Reset progress, counts as two hikers.</li>
+        <li>Going to another park, or pressing reload, isn't counted as another play.</li>
+        <li>Days go by world time (UTC), so a new day starts in the late afternoon or evening in America.</li>
+        <li><a href="./">▶ Play the game</a></li>
+      </ul>
+    </main>
+
+    <script>
+      const COUNTER = 'https://abacus.jasoncameron.dev/get/hankwhiteco.github.io/';
+      const DAYS = 14;
+      const $ = (id) => document.getElementById(id);
+      const number = (n) => n.toLocaleString('en-US');
+
+      // A counter's number (a counter that hasn't been hit yet is 0)
+      async function read(key) {
+        const res = await fetch(COUNTER + key, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' });
+        if (res.status === 404) return 0;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return Number(data.value) || 0;
+      }
+
+      const dayKey = (date) => date.toISOString().slice(0, 10);
+      const days = [];
+      for (let i = DAYS - 1; i >= 0; i--) days.push(new Date(Date.now() - i * 86400000));
+
+      async function show() {
+        try {
+          const [hikers, plays, hikersToday, ...daily] = await Promise.all([
+            read('get-out-the-door-hikers'),
+            read('get-out-the-door-plays'),
+            read(`get-out-the-door-hikers-${dayKey(days[DAYS - 1])}`),
+            ...days.map((d) => read(`get-out-the-door-plays-${dayKey(d)}`)),
+          ]);
+          $('hikers').textContent = number(hikers);
+          $('plays').textContent = number(plays);
+          $('today-plays').textContent = number(daily[DAYS - 1]);
+          $('today-note').textContent = `plays · ${number(hikersToday)} new ${hikersToday === 1 ? 'hiker' : 'hikers'}`;
+          $('status').textContent = `Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`;
+          drawChart(daily);
+        } catch (err) {
+          $('status').innerHTML = '';
+          const span = document.createElement('span');
+          span.className = 'error';
+          span.textContent = "Couldn't reach the counter just now. Wait a few seconds and reload the page.";
+          $('status').append(span);
+        }
+      }
+
+      function drawChart(daily) {
+        // (clean ticks: the top is a round number above the busiest day)
+        const most = Math.max(...daily, 1);
+        const step = most <= 4 ? 1 : most <= 10 ? 2 : most <= 25 ? 5 : most <= 50 ? 10 : most <= 100 ? 20 : Math.pow(10, Math.floor(Math.log10(most))) / 2;
+        const top = Math.ceil(most / step) * step;
+        const ticks = $('ticks');
+        const plot = $('plot');
+        ticks.replaceChildren();
+        plot.querySelectorAll('.grid').forEach((g) => g.remove());
+        for (let v = 0; v <= top; v += step) {
+          const t = document.createElement('span');
+          t.textContent = number(v);
+          t.style.bottom = `${(v / top) * 100}%`;
+          ticks.append(t);
+          if (v > 0) {
+            const g = document.createElement('div');
+            g.className = 'grid';
+            g.style.bottom = `${(v / top) * 100}%`;
+            plot.prepend(g);
+          }
+        }
+        const bars = $('bars');
+        const labels = $('days');
+        const table = $('table');
+        bars.replaceChildren();
+        labels.replaceChildren();
+        table.replaceChildren();
+        const tip = $('tip');
+        const card = tip.parentElement;
+        daily.forEach((n, i) => {
+          const date = days[i];
+          const name = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+          const slot = document.createElement('div');
+          slot.className = 'slot';
+          slot.tabIndex = 0;
+          slot.setAttribute('aria-label', `${name}: ${n} ${n === 1 ? 'play' : 'plays'}`);
+          const bar = document.createElement('div');
+          bar.className = 'bar';
+          bar.style.height = `${(n / top) * 100}%`;
+          slot.append(bar);
+          const showTip = () => {
+            tip.replaceChildren();
+            const strong = document.createElement('strong');
+            strong.textContent = number(n);
+            tip.append(strong, document.createTextNode(` ${n === 1 ? 'play' : 'plays'} · ${name}`));
+            const a = slot.getBoundingClientRect();
+            const b = card.getBoundingClientRect();
+            const barTop = bar.getBoundingClientRect().top;
+            tip.style.display = 'block';
+            const half = tip.offsetWidth / 2;
+            const x = Math.min(Math.max(a.left + a.width / 2 - b.left, half + 4), b.width - half - 4);
+            tip.style.left = `${x}px`;
+            tip.style.top = `${Math.min(barTop, a.bottom - 4) - b.top - 8}px`;
+          };
+          const hideTip = () => (tip.style.display = 'none');
+          slot.addEventListener('pointerenter', showTip);
+          slot.addEventListener('pointerleave', hideTip);
+          slot.addEventListener('focus', showTip);
+          slot.addEventListener('blur', hideTip);
+          bars.append(slot);
+          const label = document.createElement('span');
+          label.textContent = i === DAYS - 1 ? 'Today' : date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+          labels.append(label);
+          const row = document.createElement('tr');
+          const c1 = document.createElement('td');
+          c1.textContent = i === DAYS - 1 ? `${name} (today)` : name;
+          const c2 = document.createElement('td');
+          c2.className = 'n';
+          c2.textContent = number(n);
+          row.append(c1, c2);
+          table.prepend(row);
+        });
+      }
+
+      show();
+    </script>
+  </body>
+</html>

@@ -47,6 +47,7 @@ import { createChairlift, onSnow, skiMask, HAS_SKI_HILL } from './ski.js';
 import { createFishing, RODS } from './fishing.js';
 import { createWildlife } from './wildlife.js';
 import { loadGame, recoverFromDisk, loadSettings, saveSettings, TESTING, replaceSave } from './save.js';
+import { countPlay } from './playerCount.js';
 import { createSaving } from './saving.js';
 import { createOutfitter, createTravelBoard, SHOP, XP, PAY, START_MONEY, levelFor } from './outfitter.js';
 import { createOutfitterBuilding } from './outfitterBuilding.js';
@@ -4142,6 +4143,7 @@ applySettings();
 const fromBrowser = loadGame();
 const recovered = fromBrowser ? null : await recoverFromDisk();
 const saved = fromBrowser ?? recovered;
+countPlay({ newHiker: !saved }); // (the published game adds 1 to a public counter: see playerCount.js)
 const beenHere = saved ? saving.restore(saved) : false;
 makeDog(); // (your dog, if you have one: M27)
 seasons.update(); // (this park in today's season, from your save's day: M28)
