@@ -12,13 +12,21 @@ export function countPlay({ newHiker }) {
   // (going to another park reloads the game, and so does pressing reload: those are the same
   // play, so they aren't counted again)
   const how = performance.getEntriesByType?.('navigation')?.[0]?.type;
-  const fromTheGame = document.referrer.startsWith(location.origin + location.pathname);
+  let fromTheGame = false; // (came here from the game page itself: a trip to another park)
+  try {
+    const from = new URL(document.referrer);
+    fromTheGame = from.origin === location.origin && from.pathname === location.pathname;
+  } catch {
+    // (no referrer: opened from a bookmark, a typed address or another app)
+  }
   if (how === 'reload' || how === 'back_forward' || fromTheGame) return;
   const keys = ['get-out-the-door-plays', `get-out-the-door-plays-${today()}`];
   if (newHiker) keys.push('get-out-the-door-hikers', `get-out-the-door-hikers-${today()}`);
-  for (const key of keys) {
+  const hit = (key, triesLeft) =>
     fetch(`${COUNTER}/hit/${SPACE}/${key}`, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' }).catch(() => {
-      // (the counter couldn't be reached: the game carries on just the same)
+      // (the counter couldn't be reached: try once more in a little while; either way the
+      // game carries on just the same)
+      if (triesLeft > 0) setTimeout(() => hit(key, triesLeft - 1), 20000);
     });
-  }
+  for (const key of keys) hit(key, 1);
 }

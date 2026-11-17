@@ -298,45 +298,72 @@
       const $ = (id) => document.getElementById(id);
       const number = (n) => n.toLocaleString('en-US');
 
-      // A counter's number (a counter that hasn't been hit yet is 0)
+      // A counter's number (a counter that hasn't been hit yet is 0). The counter is sometimes
+      // very slow, so each read gives up after 8 seconds and tries once more; null if it can't.
       async function read(key) {
-        const res = await fetch(COUNTER + key, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' });
-        if (res.status === 404) return 0;
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        return Number(data.value) || 0;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const res = await fetch(COUNTER + key, {
+              cache: 'no-store',
+              credentials: 'omit',
+              referrerPolicy: 'no-referrer',
+              signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined,
+            });
+            if (res.status === 404) return 0;
+            if (res.ok) return Number((await res.json()).value) || 0;
+          } catch {
+            // (too slow, or couldn't connect: try again)
+          }
+        }
+        return null;
       }
+      // Read them a few at a time, to go easy on the counter
+      async function readAll(keys) {
+        const values = new Array(keys.length);
+        let next = 0;
+        const worker = async () => {
+          while (next < keys.length) {
+            const i = next++;
+            values[i] = await read(keys[i]);
+          }
+        };
+        await Promise.all([worker(), worker(), worker(), worker()]);
+        return values;
+      }
+      const shown = (n) => (n === null ? '?' : number(n));
 
       const dayKey = (date) => date.toISOString().slice(0, 10);
       const days = [];
       for (let i = DAYS - 1; i >= 0; i--) days.push(new Date(Date.now() - i * 86400000));
 
       async function show() {
-        try {
-          const [hikers, plays, hikersToday, ...daily] = await Promise.all([
-            read('get-out-the-door-hikers'),
-            read('get-out-the-door-plays'),
-            read(`get-out-the-door-hikers-${dayKey(days[DAYS - 1])}`),
-            ...days.map((d) => read(`get-out-the-door-plays-${dayKey(d)}`)),
-          ]);
-          $('hikers').textContent = number(hikers);
-          $('plays').textContent = number(plays);
-          $('today-plays').textContent = number(daily[DAYS - 1]);
-          $('today-note').textContent = `plays · ${number(hikersToday)} new ${hikersToday === 1 ? 'hiker' : 'hikers'}`;
-          $('status').textContent = `Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`;
-          drawChart(daily);
-        } catch (err) {
-          $('status').innerHTML = '';
+        const [hikers, plays, hikersToday, ...daily] = await readAll([
+          'get-out-the-door-hikers',
+          'get-out-the-door-plays',
+          `get-out-the-door-hikers-${dayKey(days[DAYS - 1])}`,
+          ...days.map((d) => `get-out-the-door-plays-${dayKey(d)}`),
+        ]);
+        $('hikers').textContent = shown(hikers);
+        $('plays').textContent = shown(plays);
+        $('today-plays').textContent = shown(daily[DAYS - 1]);
+        $('today-note').textContent = `plays · ${shown(hikersToday)} new ${hikersToday === 1 ? 'hiker' : 'hikers'}`;
+        const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const missing = [hikers, plays, hikersToday, ...daily].filter((n) => n === null).length;
+        $('status').replaceChildren();
+        if (missing) {
           const span = document.createElement('span');
           span.className = 'error';
-          span.textContent = "Couldn't reach the counter just now. Wait a few seconds and reload the page.";
+          span.textContent = `Updated ${time}, but the counter was too slow to give ${missing === 1 ? 'one number' : 'some numbers'} (shown as ?). Reload the page in a minute.`;
           $('status').append(span);
+        } else {
+          $('status').textContent = `Updated ${time}.`;
         }
+        drawChart(daily);
       }
 
       function drawChart(daily) {
         // (clean ticks: the top is a round number above the busiest day)
-        const most = Math.max(...daily, 1);
+        const most = Math.max(...daily.map((n) => n ?? 0), 1);
         const step = most <= 4 ? 1 : most <= 10 ? 2 : most <= 25 ? 5 : most <= 50 ? 10 : most <= 100 ? 20 : Math.pow(10, Math.floor(Math.log10(most))) / 2;
         const top = Math.ceil(most / step) * step;
         const ticks = $('ticks');
@@ -366,19 +393,20 @@
         daily.forEach((n, i) => {
           const date = days[i];
           const name = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+          const words = n === null ? "couldn't load" : n === 1 ? 'play' : 'plays';
           const slot = document.createElement('div');
           slot.className = 'slot';
           slot.tabIndex = 0;
-          slot.setAttribute('aria-label', `${name}: ${n} ${n === 1 ? 'play' : 'plays'}`);
+          slot.setAttribute('aria-label', `${name}: ${shown(n)} ${words}`);
           const bar = document.createElement('div');
           bar.className = 'bar';
-          bar.style.height = `${(n / top) * 100}%`;
+          bar.style.height = `${((n ?? 0) / top) * 100}%`;
           slot.append(bar);
           const showTip = () => {
             tip.replaceChildren();
             const strong = document.createElement('strong');
-            strong.textContent = number(n);
-            tip.append(strong, document.createTextNode(` ${n === 1 ? 'play' : 'plays'} · ${name}`));
+            strong.textContent = shown(n);
+            tip.append(strong, document.createTextNode(` ${words} · ${name}`));
             const a = slot.getBoundingClientRect();
             const b = card.getBoundingClientRect();
             const barTop = bar.getBoundingClientRect().top;
@@ -402,7 +430,7 @@
           c1.textContent = i === DAYS - 1 ? `${name} (today)` : name;
           const c2 = document.createElement('td');
           c2.className = 'n';
-          c2.textContent = number(n);
+          c2.textContent = shown(n);
           row.append(c1, c2);
           table.prepend(row);
         });
