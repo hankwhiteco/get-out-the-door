@@ -4312,3 +4312,16 @@ if (!TESTING) {
   titleScreen.addEventListener('click', carryOn);
   window.addEventListener('keydown', carryOn, true);
 }
+
+// ---------- The loading screen (M35) ----------
+// Up since the page opened (index.html). The park's built now: once its first frame is drawn
+// (so there's no pause behind it), the loading screen fades away. (Straight away in a ?test window.)
+const loadingScreen = document.getElementById('loading-screen');
+if (loadingScreen) {
+  const fadeAway = () => {
+    loadingScreen.classList.add('done');
+    setTimeout(() => loadingScreen.remove(), 600);
+  };
+  if (TESTING) loadingScreen.remove();
+  else requestAnimationFrame(() => requestAnimationFrame(fadeAway));
+}

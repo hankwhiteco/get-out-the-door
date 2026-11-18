@@ -9,6 +9,30 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <!-- The loading screen (M35): up from the moment the page opens, while the game downloads and
+         builds the park. main.js fades it away once the park's ready. -->
+    <div id="loading-screen">
+      <div class="loading-box">
+        <img class="title-logo" src="/icon.svg" alt="" />
+        <h1>Get Out the Door</h1>
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <p id="loading-note">Loading the park…</p>
+      </div>
+    </div>
+    <script>
+      // (if the game can't start, the loading screen says so rather than loading forever)
+      window.addEventListener(
+        'error',
+        (e) => {
+          if (e.target !== window && e.target?.tagName !== 'SCRIPT') return; // (not just a missing picture)
+          const note = document.getElementById('loading-note');
+          if (!note || !document.getElementById('loading-screen')) return;
+          note.textContent = 'Something went wrong while loading. Try reloading the page.';
+          document.getElementById('loading-screen').classList.add('stuck');
+        },
+        true,
+      );
+    </script>
     <!-- Shown before you start and whenever the game is paused (Esc) -->
     <div id="title-screen" class="hidden">
       <div class="title-box">

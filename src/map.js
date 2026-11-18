@@ -457,16 +457,20 @@ export function createMap({ trails, tracks = [], getHeight, waterDepth, waterSur
       label(trail.summitName + (completed.has(trail.id) ? ' ✓' : ''), x, y - 12 * u, true);
     }
 
-    // Campsites: a little tent
+    // Campsites (M36): a tent at each one, with an orange circle behind yours (where your tent's
+    // pitched). Their names go on after the most important ones, below.
     for (const site of camps.sites) {
       const [x, y] = toPixel(site.center.x, site.center.z);
-      ctx.fillStyle = site.pitched ? '#e07a3a' : '#7a5a3c';
-      ctx.beginPath();
-      ctx.moveTo(x, y - 5 * u);
-      ctx.lineTo(x - 5 * u, y + 4 * u);
-      ctx.lineTo(x + 5 * u, y + 4 * u);
-      ctx.closePath();
-      ctx.fill();
+      if (site.pitched) {
+        ctx.fillStyle = 'rgba(224, 122, 58, 0.85)';
+        ctx.beginPath();
+        ctx.arc(x, y, 12 * u, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.font = `${16 * u}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = COLORS.text;
+      ctx.fillText('⛺', x, y + 6 * u);
     }
 
     // You are here (its label first, so it's never left off)
@@ -477,6 +481,12 @@ export function createMap({ trails, tracks = [], getHeight, waterDepth, waterSur
     if (home) {
       const [tx, ty] = toPixel(home.x, home.z);
       label('Trailhead', tx, ty - 14 * u, true);
+    }
+    // Each campsite's name (yours always; the others only where there's room, so zoom in to see
+    // the ones by a summit)
+    for (const site of camps.sites) {
+      const [x, y] = toPixel(site.center.x, site.center.z);
+      label(site.pitched ? `${site.name} (your tent)` : site.name, x, y + 22 * u, false, !site.pitched);
     }
 
     // Your ATV, boat, cabin and Eagle Rock… (each one's name, unless it would sit on top of another)
@@ -538,7 +548,7 @@ export function createMap({ trails, tracks = [], getHeight, waterDepth, waterSur
     }
     const key = document.createElement('div');
     key.className = 'map-key';
-    key.textContent = `▪ Buildings, bridges and docks  ·  Contour lines every ${contourStep} m (a bold one every ${contourStep * 5} m)`;
+    key.textContent = `⛺ Campsites  ·  ▪ Buildings, bridges and docks  ·  Contour lines every ${contourStep} m (a bold one every ${contourStep * 5} m)`;
     legend.append(key);
   }
 
