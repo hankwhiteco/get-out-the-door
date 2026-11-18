@@ -125,6 +125,7 @@ export function createFerry({ landing, waterLevel, groundHeight, addObstacle }) 
 export function createLakeside({ scene, camera, islands, groundHeight, waterDepth, waterLevel, addObstacle }) {
   const group = new THREE.Group();
   scene.add(group);
+  group.userData.onMap = true; // (the map draws its buildings from above: see map.js)
   const moving = new THREE.Group(); // (the herons: not merged, they move)
   scene.add(moving);
   const updates = [];

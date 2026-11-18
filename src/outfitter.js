@@ -1,4 +1,5 @@
 import { PARK_CABINS } from './parkCabins.js';
+import { BIKE_COLORS, BIKE_TIRES } from './vehicles.js';
 // ---------- The Outfitter: the park store at every trailhead ----------
 // Walk up to the counter and press E. The store has five sections:
 //   Gear          things you keep. Bigger things also need enough XP before you can buy them.
@@ -77,6 +78,16 @@ export const SHOP = [
   { id: 'motorboat', section: 'gear', name: 'Motorboat', icon: '🚤', price: 220, needXP: 750, gear: true, after: 'boat', about: 'Zoom! More than twice as fast as anything else on the water, and it tows a barge: drive your ATV or bike on, and take it to an island.' },
   { id: 'flyRod', section: 'gear', name: 'Fly rod', icon: '🎣', price: 120, needXP: 700, gear: true, after: 'spinningRod', about: 'The best rod: casts 20 m, catches the biggest fish, and has the strongest line. Each park’s legend only bites for a fly rod…' },
   { id: 'expeditionPack', section: 'gear', name: 'Expedition pack', icon: '🎒', price: 100, needXP: 800, gear: true, after: 'hikingPack', about: 'The biggest backpack: 27 slots, room for everything on a long trip.' },
+  // The bike shop (M34): parts for your mountain bike. Yours to keep: put them on and take
+  // them off whenever you like. (The paint is free: see drawBike.)
+  { id: 'bike-fat', section: 'bike', name: 'Fat tires', icon: '🛞', price: 15, needXP: 0, gear: true, after: 'bike', bikePart: { tires: 'fat' }, about: 'Big, soft tires: hills slow you down much less (but you’re a little slower on the flat).' },
+  { id: 'bike-slick', section: 'bike', name: 'Road slicks', icon: '🛞', price: 12, needXP: 0, gear: true, after: 'bike', bikePart: { tires: 'slick' }, about: 'Thin, smooth tires: the fastest on the flat (but hills slow you down more).' },
+  { id: 'bike-bell', section: 'bike', name: 'Bell', icon: '🔔', price: 4, needXP: 0, gear: true, after: 'bike', bikePart: { bell: true }, about: 'Ring it with Space while you ride. Ding-ding!' },
+  { id: 'bike-basket', section: 'bike', name: 'Basket', icon: '🧺', price: 8, needXP: 0, gear: true, after: 'bike', bikePart: { basket: true }, about: 'A wicker basket on the front, for picnics.' },
+  { id: 'bike-light', section: 'bike', name: 'Headlight', icon: '💡', price: 12, needXP: 0, gear: true, after: 'bike', bikePart: { light: true }, about: 'Lights up the way ahead when you ride after dark.' },
+  { id: 'bike-bags', section: 'bike', name: 'Saddlebags', icon: '👜', price: 15, needXP: 0, gear: true, after: 'bike', bikePart: { bags: true }, about: 'Two canvas bags on a rack at the back, for bikepacking.' },
+  { id: 'bike-streamers', section: 'bike', name: 'Streamers', icon: '🎀', price: 3, needXP: 0, gear: true, after: 'bike', bikePart: { streamers: true }, about: 'Ribbons on the handlebars that flutter as you ride.' },
+  { id: 'bike-bottle', section: 'bike', name: 'Water bottle', icon: '🍶', price: 5, needXP: 0, gear: true, after: 'bike', bikePart: { bottle: true }, about: 'A bottle in a cage on the frame.' },
 ];
 
 // How much XP things give
@@ -164,7 +175,7 @@ function row(icon, name, about, ...buttons) {
 // onBuy(item), onSold(kind, price, index), onRecall(vehicle id): what happens (main.js)
 // recallable(): the vehicles the Services counter can bring back (their ids)
 // lent(id): is that one the Outfitter's own, lent to you? (Bluewater Lake's free canoe)
-export function createOutfitter({ pack, parkName, parkId = null, recallable, lent = () => false, onBuy, onSold, onRecall, onContest, onAdopt }) {
+export function createOutfitter({ pack, parkName, parkId = null, recallable, lent = () => false, onBuy, onSold, onRecall, onContest, onAdopt, bikeLook = () => null, onBikeLook = () => {} }) {
   const panel = document.getElementById('store');
   const screen = document.getElementById('store-screen');
   const status = document.getElementById('store-money');
@@ -207,7 +218,7 @@ export function createOutfitter({ pack, parkName, parkId = null, recallable, len
     status.textContent = `💵 $${pack.money}  ·  ⭐ Level ${levelFor(pack.xp)}`;
     for (const b of tabs.children) b.classList.toggle('selected', b.dataset.tab === tab);
     screen.innerHTML = '';
-    ({ gear: () => drawItems('gear'), clothes: () => drawItems('clothes'), food: () => drawItems('food'), supplies: () => drawItems('supplies'), sell: drawSell, services: drawServices })[tab]();
+    ({ gear: () => drawItems('gear'), clothes: () => drawItems('clothes'), bike: drawBike, food: () => drawItems('food'), supplies: () => drawItems('supplies'), sell: drawSell, services: drawServices })[tab]();
   }
 
   // A section of the store: what's for sale, what you've got, and what you need more XP for
@@ -236,6 +247,57 @@ export function createOutfitter({ pack, parkName, parkId = null, recallable, len
       const r = row(locked && !owned ? '🔒' : item.icon, item.name, about, action);
       if (locked && !owned) r.classList.add('locked');
       screen.append(r);
+    }
+  }
+
+  // The bike shop (M34): paint your bike, choose its tires, and put extras on it
+  function drawBike() {
+    if (!pack.owned.bike) {
+      const bike = SHOP.find((i) => i.id === 'bike');
+      screen.append(el('p', 'panel-hint', `First you need a mountain bike (in 🎒 Gear: $${bike.price}${pack.xp < bike.needXP ? `, once you have ${bike.needXP} XP` : ''}). Then come back and make it your own!`));
+      return;
+    }
+    const look = bikeLook();
+    screen.append(el('p', 'panel-hint', 'Make your bike your own! The paint is free. Parts are yours to keep: take them off and put them back on whenever you like. Friends see your bike too.'));
+    // The paint: a swatch for each color
+    const swatches = el('div', 'bike-swatches');
+    for (const color of BIKE_COLORS) {
+      const swatch = el('button', `bike-swatch${look.color === color.id ? ' selected' : ''}`);
+      swatch.style.background = '#' + color.hex.toString(16).padStart(6, '0');
+      swatch.title = color.name;
+      swatch.setAttribute('aria-label', color.name);
+      swatch.addEventListener('click', () => {
+        onBikeLook({ ...look, color: color.id });
+        draw();
+      });
+      swatches.append(swatch);
+    }
+    const current = BIKE_COLORS.find((c) => c.id === look.color) ?? BIKE_COLORS[0];
+    const paint = row('🎨', `Paint: ${current.name}`, 'Free! Pick a color for the frame.');
+    paint.querySelector('.panel-text').append(swatches);
+    screen.append(paint);
+    // A part: on (✓, with Take off), yours but off (Put on), or for sale
+    const partRow = (item, on, putOn, takeOff) => {
+      const owned = !item || pack.owned[item.id];
+      let action;
+      if (on) action = takeOff ? button('Take off', takeOff, 'panel-buy panel-off') : el('span', 'panel-tick', '✓ On');
+      else if (owned) action = button('Put on', putOn);
+      else {
+        action = button(`$${item.price}`, () => onBuy(item));
+        action.disabled = pack.money < item.price;
+      }
+      return action;
+    };
+    screen.append(el('p', 'panel-hint bike-heading', 'Tires'));
+    for (const [id, tire] of Object.entries(BIKE_TIRES)) {
+      const item = SHOP.find((i) => i.bikePart?.tires === id);
+      const about = item?.about ?? 'Knobbly tires that came with your bike: good everywhere.';
+      screen.append(row('🛞', tire.name, about, partRow(item, look.tires === id, () => onBikeLook({ ...look, tires: id }))));
+    }
+    screen.append(el('p', 'panel-hint bike-heading', 'Extras'));
+    for (const item of SHOP.filter((i) => i.section === 'bike' && !i.bikePart.tires)) {
+      const part = Object.keys(item.bikePart)[0];
+      screen.append(row(item.icon, item.name, item.about, partRow(item, !!look[part], () => onBikeLook({ ...look, [part]: true }), () => onBikeLook({ ...look, [part]: false }))));
     }
   }
 

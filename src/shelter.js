@@ -125,6 +125,7 @@ export function createShelter({ scene, groundHeight, addObstacle, spot }) {
 
   mergeStill(group);
   scene.add(group);
+  group.userData.onMap = true; // (the map draws its buildings from above: see map.js)
 
   // String lights: a wire under each edge of the roof, sagging between the posts, with colored
   // bulbs along it (they glow at night). The bulbs aren't merged: they light up.

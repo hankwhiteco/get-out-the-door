@@ -353,6 +353,15 @@ export function createAudio() {
       }
     },
 
+    // A bike bell: ding-ding! (M34)
+    bell() {
+      if (!ctx || muted) return;
+      for (const delay of [0, 0.16]) {
+        tone({ freq: 2350, volume: 0.12, duration: 0.45, delay, type: 'sine' });
+        tone({ freq: 3520, volume: 0.04, duration: 0.3, delay, type: 'sine' });
+      }
+    },
+
     // Levelling up: a happy rising fanfare
     fanfare() {
       if (!ctx || muted) return;

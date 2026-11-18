@@ -44,6 +44,9 @@ export const SPECIES = [
   { id: 'fawn', name: 'Fawn', icon: '🦌', parks: ['valley', 'marine', 'lake'], hint: 'Only in spring' },
   { id: 'bear-cub', name: 'Bear cub', icon: '🧸', parks: ['valley', 'lake', 'mountain'], hint: 'Only in spring' },
   { id: 'fox-kit', name: 'Fox kit', icon: '🦊', parks: ['valley', 'lake', 'mountain', 'grasslands'], hint: 'Only in spring' },
+  // Spiders (M34): cozy, not creepy
+  { id: 'orb-weaver', name: 'Orb-weaver spider', icon: '🕷', parks: ['valley', 'lake', 'mountain', 'marine', 'grasslands'], hint: 'In its web beside the trails (not in winter). Look in the morning, when the dew sparkles' },
+  { id: 'tarantula', name: 'Desert tarantula', icon: '🕷', parks: ['desert'], hint: 'Out for a stroll near the trailhead at dusk' },
 ];
 const BY_ID = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 // ("Black bear" → "black-bear")
@@ -73,7 +76,7 @@ export function createWildlifeLog({ pack, camera, sky, groundHeight, things, par
     inFrame() {
       const seen = new Map();
       for (const t of things()) {
-        if (!BY_ID[t.id] || !look.inFrame(t.position, reach(t.size))) continue;
+        if (!BY_ID[t.id] || !look.inFrame(t.position, t.near ?? reach(t.size))) continue;
         const d = camera.position.distanceTo(t.position);
         if (!seen.has(t.id) || d < seen.get(t.id).d) seen.set(t.id, { ...t, d });
       }

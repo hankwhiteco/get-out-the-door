@@ -585,6 +585,13 @@ body.photo-mode #compass-wrap {
   }
 }
 
+#map-legend .map-key {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+
 #map-legend .swatch {
   display: inline-block;
   width: 18px;
@@ -743,6 +750,37 @@ body.photo-mode #toolbar {
   display: flex;
   justify-content: flex-end;
   margin: -8px 0 10px;
+}
+
+/* The Outfitter's bike shop (M34) */
+.bike-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bike-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #c9b98f;
+  cursor: pointer;
+}
+
+.bike-swatch.selected {
+  box-shadow: 0 0 0 3px #3b3a30;
+}
+
+.panel-hint.bike-heading {
+  margin-top: 14px;
+  font-weight: 600;
+}
+
+.panel-buy.panel-off {
+  background: #8a8670;
 }
 
 #settings-button,

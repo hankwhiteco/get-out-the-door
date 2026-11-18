@@ -102,36 +102,104 @@ export function createATV({ scene, groundHeight, pushOutOfObstacles, isTooDeep, 
 // ---------- Mountain bike ----------
 // Like the ATV, but pedal-powered: slower, quiet, rolls faster downhill and slower
 // uphill, and pedaling uses a little energy (main.js handles that).
-export function createBike({ scene, groundHeight, pushOutOfObstacles, isTooDeep, start }) {
-  const group = new THREE.Group();
-  const frameColor = 0x3f7fd0;
+// Your bike, your way (M34: the Outfitter's bike shop): its paint, its tires, and extras.
+export const BIKE_COLORS = [
+  { id: 'blue', name: 'Lake blue', hex: 0x3f7fd0 },
+  { id: 'red', name: 'Fire red', hex: 0xd9443c },
+  { id: 'green', name: 'Forest green', hex: 0x3f8f4a },
+  { id: 'yellow', name: 'Sunshine yellow', hex: 0xf2c037 },
+  { id: 'orange', name: 'Sunset orange', hex: 0xe8833a },
+  { id: 'purple', name: 'Berry purple', hex: 0x8a6fc4 },
+  { id: 'pink', name: 'Bubblegum pink', hex: 0xe88bb3 },
+  { id: 'teal', name: 'Glacier teal', hex: 0x2aa198 },
+  { id: 'white', name: 'Snow white', hex: 0xeeeeee },
+  { id: 'black', name: 'Midnight black', hex: 0x2a2a2e },
+];
+// (width: how fat the tire is; top: how fast pedaling gets you on the flat; hills: how much
+// going uphill slows you down)
+export const BIKE_TIRES = {
+  trail: { name: 'Trail tires', width: 0.05, top: 8, hills: 0.6 },
+  fat: { name: 'Fat tires', width: 0.09, top: 7.5, hills: 0.35 },
+  slick: { name: 'Road slicks', width: 0.032, top: 10, hills: 0.75 },
+};
+export const DEFAULT_BIKE = { color: 'blue', tires: 'trail', bell: false, basket: false, light: false, bags: false, streamers: false, bottle: false };
+
+// Build the bike's model into `group`, the way `look` says (its old parts are taken away first)
+function fillBike(group, look) {
+  for (const child of [...group.children]) {
+    group.remove(child);
+    child.traverse((o) => {
+      o.geometry?.dispose();
+      o.material?.dispose?.();
+    });
+  }
+  const frameColor = (BIKE_COLORS.find((c) => c.id === look.color) ?? BIKE_COLORS[0]).hex;
+  const tire = BIKE_TIRES[look.tires] ?? BIKE_TIRES.trail;
+  const lift = tire.width - 0.05; // (fatter tires stand it a little higher)
+  const at = (mesh, x, y, z) => {
+    mesh.position.set(x, y + lift, z);
+    group.add(mesh);
+    return mesh;
+  };
+  const metal = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true, metalness: 0.4, roughness: 0.4 });
   for (const z of [-0.55, 0.55]) {
-    const wheel = new THREE.Mesh(
-      new THREE.TorusGeometry(0.34, 0.05, 6, 16).rotateY(Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x1e1e1e, flatShading: true })
-    );
-    wheel.position.set(0, 0.36, z);
+    const wheel = at(new THREE.Mesh(new THREE.TorusGeometry(0.34 - tire.width + 0.05, tire.width, 6, 18).rotateY(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1e1e1e, flatShading: true })), 0, 0.36, z);
     wheel.castShadow = true;
-    group.add(wheel);
+    at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.1, 8).rotateZ(Math.PI / 2), metal(0x9a9a9a)), 0, 0.36, z); // (the hub)
   }
   const tube = (length, x, y, z, rotX) => {
-    const t = box(0.06, 0.06, length, frameColor);
-    t.position.set(x, y, z);
+    const t = at(box(0.06, 0.06, length, frameColor), x, y, z);
     t.rotation.x = rotX;
-    group.add(t);
   };
   tube(1.0, 0, 0.75, 0, 0.15); // top tube
   tube(0.8, 0, 0.55, 0.15, -0.6); // down tube
-  const seat = box(0.15, 0.06, 0.28, 0x222222);
-  seat.position.set(0, 0.95, 0.35);
-  const bars = box(0.7, 0.05, 0.05, 0x222222);
-  bars.position.set(0, 1.05, -0.5);
-  const stem = box(0.05, 0.5, 0.05, 0x222222);
-  stem.position.set(0, 0.8, -0.5);
-  group.add(seat, bars, stem);
-  mergeStill(group);
+  tube(0.55, 0, 0.62, 0.3, 0.35); // seat tube
+  at(box(0.15, 0.06, 0.28, 0x222222), 0, 0.95, 0.35); // seat
+  at(box(0.7, 0.05, 0.05, 0x222222), 0, 1.05, -0.5); // handlebars
+  at(box(0.05, 0.5, 0.05, 0x222222), 0, 0.8, -0.5); // stem
+  // Extras
+  if (look.bell) at(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.035, 10), metal(0xe0c060)), 0.2, 1.09, -0.5);
+  if (look.basket) {
+    at(box(0.38, 0.22, 0.3, 0xb08850), 0, 0.92, -0.8);
+    at(box(0.4, 0.03, 0.32, 0x8a6638), 0, 1.03, -0.8); // (its rim)
+  }
+  if (look.light) {
+    // (on the stem, or on the front of the basket if there is one)
+    const [y, z] = look.basket ? [0.9, -0.99] : [0.96, -0.58];
+    at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 10).rotateX(Math.PI / 2), metal(0x333333)), 0, y, z);
+    at(new THREE.Mesh(new THREE.CircleGeometry(0.042, 10).rotateY(Math.PI), new THREE.MeshStandardMaterial({ color: 0xfff6cc, emissive: 0xfff2c0, emissiveIntensity: 0.8 })), 0, y, z - 0.041);
+  }
+  if (look.bags) {
+    at(box(0.3, 0.03, 0.42, 0x333333), 0, 0.8, 0.5); // (the rack)
+    for (const side of [-1, 1]) at(box(0.11, 0.26, 0.32, 0x5c6e3e), side * 0.2, 0.66, 0.5);
+  }
+  if (look.bottle) {
+    const bottle = at(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 10), new THREE.MeshStandardMaterial({ color: 0x3aa0d8, flatShading: true })), 0, 0.6, 0.06);
+    bottle.rotation.x = -0.6;
+  }
+  // Streamers on the handlebar ends: they flutter as you ride, so they're kept as their own pieces
+  const streamers = [];
+  if (look.streamers) {
+    for (const [side, color] of [[-1, 0xe88bb3], [1, 0xf2c037]]) {
+      const pivot = new THREE.Group();
+      pivot.position.set(side * 0.36, 1.05 + lift, -0.5);
+      const ribbon = box(0.012, 0.3, 0.035, color);
+      ribbon.position.y = -0.15;
+      pivot.add(ribbon);
+      group.add(pivot);
+      streamers.push(pivot);
+    }
+  }
+  mergeStill(group, streamers);
+  return streamers;
+}
+
+export function createBike({ scene, groundHeight, pushOutOfObstacles, isTooDeep, start, look = DEFAULT_BIKE }) {
+  const group = new THREE.Group();
+  let streamers = fillBike(group, { ...DEFAULT_BIKE, ...look });
   group.visible = false;
   scene.add(group);
+  let flutter = 0;
 
   const bike = {
     group,
@@ -139,6 +207,19 @@ export function createBike({ scene, groundHeight, pushOutOfObstacles, isTooDeep,
     speed: 0,
     position: new THREE.Vector3(start.x, 0, start.z),
     pedaling: false,
+    look: { ...DEFAULT_BIKE, ...look },
+    // Paint it, change its tires, put extras on or take them off (M34)
+    setLook(next) {
+      bike.look = { ...DEFAULT_BIKE, ...(next ?? {}) };
+      streamers = fillBike(group, bike.look);
+    },
+    // The streamers flutter (faster the faster you go)
+    animate(dt) {
+      if (!streamers.length) return;
+      flutter += dt * (3 + Math.abs(bike.speed) * 2);
+      const back = Math.min(1.3, Math.abs(bike.speed) * 0.15); // (blown back as you go)
+      streamers.forEach((s, i) => (s.rotation.x = -back - Math.sin(flutter + i * 1.7) * (0.12 + back * 0.25)));
+    },
 
     place() {
       const p = bike.position;
@@ -152,9 +233,10 @@ export function createBike({ scene, groundHeight, pushOutOfObstacles, isTooDeep,
       // Hills: rolling downhill speeds you up, uphill slows you down
       const h = groundHeight(p.x, p.z);
       const slope = groundHeight(p.x + f.x, p.z + f.z) - h;
-      bike.speed -= 9.8 * slope * 0.6 * dt;
+      const tire = BIKE_TIRES[bike.look.tires] ?? BIKE_TIRES.trail; // (M34: fat tires climb, slicks are fast)
+      bike.speed -= 9.8 * slope * (slope > 0 ? tire.hills : 0.6) * dt;
       bike.pedaling = !!(keys.KeyW || keys.ArrowUp);
-      if (bike.pedaling && bike.speed < 8) bike.speed += 3 * dt;
+      if (bike.pedaling && bike.speed < tire.top) bike.speed += 3 * dt;
       if (keys.KeyS || keys.ArrowDown) bike.speed -= (bike.speed > 0 ? 7 : 1.5) * dt;
       bike.speed *= Math.exp(-0.25 * dt);
       bike.speed = THREE.MathUtils.clamp(bike.speed, -2, 13);
@@ -179,6 +261,7 @@ export function createBike({ scene, groundHeight, pushOutOfObstacles, isTooDeep,
       const ground = groundHeight(p.x, p.z);
       group.position.set(p.x, ground, p.z);
       group.rotation.set(Math.atan(groundHeight(p.x + f.x, p.z + f.z) - ground), bike.heading, 0, 'YXZ');
+      bike.animate(dt);
       camera.position.set(p.x - f.x * 0.35, ground + 1.75, p.z - f.z * 0.35);
       aimCamera(camera, bike.heading);
     },

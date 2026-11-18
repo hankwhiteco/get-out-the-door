@@ -82,6 +82,7 @@ export function createLawnGames({ scene, spot, groundHeight, addObstacle, camera
 
   mergeStill(group);
   scene.add(group);
+  group.userData.onMap = true; // (the map draws its buildings from above: see map.js)
   // The lawn's sign, by the shelter end
   const signAt = toWorld(-4.5, -LENGTH / 2);
   const sign = createSign(['Lawn Games', 'Horseshoes · Frisbee · Sack race']);

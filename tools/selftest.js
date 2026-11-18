@@ -318,6 +318,75 @@ export async function runSelfTest({ only = null } = {}) {
     check('swimming needs a swimsuit and the Swimming book', stopped && swam, `stopped ${stopped}, swam ${swam}`);
   });
 
+  // ---------- M34: a truer map, running, the bike shop and spiders ----------
+  await part('truer map', () => {
+    g.map.open(g.camera, null);
+    const step = g.map.contourStep();
+    const drawn = g.map.buildingCount();
+    g.map.close();
+    check('the map draws the buildings from above, and contour lines that suit the park', drawn > 100 && [2, 4, 5, 10].includes(step), `${drawn} building triangles, contours every ${step} m`);
+  });
+  await part('running', () => {
+    const trail = g.trails.find((tr) => !tr.traverse && !tr.island) ?? g.trails[0];
+    const from = trail.path.samples[2];
+    const ahead = trail.path.samples[Math.min(trail.path.samples.length - 1, 14)];
+    const go = (run) => {
+      standAt(from.x, from.z, ahead.x, ahead.z);
+      g.energy.value = 80;
+      g.energy.water = 80;
+      const at = g.camera.position.clone();
+      g.player.keys.KeyW = true;
+      g.player.running = run;
+      tick(45);
+      const moved = distanceMoved(at);
+      g.player.keys.KeyW = false;
+      g.player.running = false;
+      return { moved, used: 80 - g.energy.value };
+    };
+    const walk = go(false);
+    const run = go(true);
+    tick(2);
+    check('running (W twice): faster, and more tiring', run.moved > walk.moved * 1.5 && run.used > walk.used * 1.5, `walk ${walk.moved.toFixed(1)} m (${walk.used.toFixed(2)}), run ${run.moved.toFixed(1)} m (${run.used.toFixed(2)})`);
+  });
+  await part('bike shop', () => {
+    const was = { owned: pack.owned.bike, look: pack.bikeLook ?? null, money: pack.money, bell: pack.owned['bike-bell'], fat: pack.owned['bike-fat'] };
+    pack.owned.bike = true;
+    pack.money += 100;
+    g.store.open('bike');
+    const rowFor = (name) => [...document.querySelectorAll('#store-screen .panel-item')].find((r) => r.querySelector('.panel-name').textContent === name);
+    document.querySelectorAll('.bike-swatch')[1].click(); // (red)
+    rowFor('Bell')?.querySelector('button')?.click();
+    rowFor('Fat tires')?.querySelector('button')?.click();
+    const look = g.bike.look;
+    check('the bike shop: paint, tires and a bell', look.color === 'red' && look.tires === 'fat' && look.bell && pack.owned['bike-bell'] && g.bike.group.children.length > 0, JSON.stringify(look));
+    g.store.close();
+    // (back as it was)
+    pack.owned.bike = was.owned;
+    if (!was.bell) delete pack.owned['bike-bell'];
+    if (!was.fat) delete pack.owned['bike-fat'];
+    pack.bikeLook = was.look;
+    g.bike.setLook(was.look ?? {});
+    pack.money = was.money;
+    g.showOwnedThings();
+  });
+  await part('spiders', () => {
+    const hour = g.sky.hour;
+    const kinds = () => g.wildThings().map((thing) => thing.id);
+    if (g.seasons.id === 'winter') return check('no spiders in winter', !kinds().some((id) => id === 'orb-weaver' || id === 'tarantula'));
+    if (g.parkId === 'desert') {
+      g.sky.hour = 18.5;
+      tick(2);
+      check('a tarantula out for a stroll at dusk', kinds().includes('tarantula'));
+    } else {
+      g.sky.hour = 8;
+      tick(2);
+      const webs = kinds().filter((id) => id === 'orb-weaver').length;
+      check('orb-weaver spiders in their webs beside the trails', webs >= 2, `${webs} webs`);
+    }
+    g.sky.hour = hour;
+    tick(2);
+  });
+
   // The Ridge to Sea Traverse (M30): the board, each day's leg, the pass, the food cache, the finish
   if (g.traverseLeg) {
     await part('traverse', async () => {

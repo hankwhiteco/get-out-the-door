@@ -266,6 +266,8 @@ export function createMultiplayer({ scene, groundHeight, park, boatWaterLevel = 
     if (message.type === 'look') {
       o.hiker.setLook(message.look);
       setDogName(o, message.look?.dogName);
+      o.bikeLook = message.look?.bike ?? null; // (their bike, as they've made it: M34)
+      o.vehicles.bike?.setLook(o.bikeLook);
     }
     if (message.type === 'park') {
       o.park = message.park;
@@ -315,6 +317,7 @@ export function createMultiplayer({ scene, groundHeight, park, boatWaterLevel = 
       ride: null, // where their vehicle is shown: { x, z, heading } (gliding, like the hiker)
       dog: null, // their dog (M27: made the first time it turns up)
       dogName: player.look?.dogName ?? '',
+      bikeLook: player.look?.bike ?? null, // (their bike, as they've made it: M34)
       dogTag: null,
     };
     others.set(player.id, o);
@@ -370,7 +373,7 @@ export function createMultiplayer({ scene, groundHeight, park, boatWaterLevel = 
     if (!o.vehicles[kind]) {
       const start = { x: 0, z: 0, heading: 0 };
       if (kind === 'atv') o.vehicles.atv = createATV({ scene, groundHeight, ...noBumps, start });
-      else if (kind === 'bike') o.vehicles.bike = createBike({ scene, groundHeight, ...noBumps, start });
+      else if (kind === 'bike') o.vehicles.bike = createBike({ scene, groundHeight, ...noBumps, start, look: o.bikeLook ?? undefined });
       else if (kind === 'horse') o.vehicles.horse = createHorse({ scene, groundHeight, ...noBumps, waterDepth: () => 0, home: start });
       else {
         // (one boat, whichever kind it is)

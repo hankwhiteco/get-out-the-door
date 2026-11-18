@@ -5,6 +5,8 @@ import { WORLD_SIZE } from './terrain.js';
 // How fast the hiker walks, in meters per second.
 const WALK_SPEED = 3;
 const CAREFUL_SPEED = 1.4; // while holding Shift
+const RUN_SPEED = 5.5; // running: W twice quickly, and hold it (M34)
+const DOUBLE_TAP = 0.32; // (seconds between the two taps of W)
 // How quickly you speed up and slow down. Higher = snappier, lower = floatier.
 // Smooth starts and stops are easier on the eyes in first person.
 const ACCELERATION = 6;
@@ -72,6 +74,9 @@ export function createPlayer(camera, domElement, groundHeight, pushOutOfObstacle
     },
     // Walking speed is multiplied by this (main.js lowers it when you're tired)
     speedMultiplier: 1,
+    running: false, // W was tapped twice and is still held: you want to run (M34)
+    canRun: true, // (main.js says when you can't: swimming, worn out, in deep snow…)
+    isRunning: false, // you're actually running, this frame
     // Which keys are held down (vehicles in main.js read these too)
     keys: null,
     // True while you're driving, rowing, gliding or climbing: main.js moves you then
@@ -180,16 +185,27 @@ export function createPlayer(camera, domElement, groundHeight, pushOutOfObstacle
   // Which keys are held down right now
   const keys = {};
   player.keys = keys;
+  let lastForwardTap = -1;
   window.addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement && e.target.type === 'text') return; // typing (e.g. chat)
+    // W twice quickly (and held): run (M34)
+    if ((e.code === 'KeyW' || e.code === 'ArrowUp') && !e.repeat) {
+      const now = performance.now() / 1000;
+      if (now - lastForwardTap < DOUBLE_TAP) player.running = true;
+      lastForwardTap = now;
+    }
     keys[e.code] = true;
     // With a locked mouse the browser handles Esc itself; in drag mode we do it
     if (e.code === 'Escape' && dragMode && active) setActive(false);
   });
-  window.addEventListener('keyup', (e) => (keys[e.code] = false));
+  window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') player.running = false;
+  });
   // If the window loses focus, forget held keys so you don't keep walking forever
   window.addEventListener('blur', () => {
     for (const k in keys) keys[k] = false;
+    player.running = false;
   });
 
   // Current speed: x = sideways (right is +), y = forwards (forward is +)
@@ -207,6 +223,7 @@ export function createPlayer(camera, domElement, groundHeight, pushOutOfObstacle
     turnVelocity += (wantedTurn - turnVelocity) * (1 - Math.exp(-TURN_ACCELERATION * dt));
     if (Math.abs(turnVelocity) > 0.001) turn(turnVelocity * dt, 0);
 
+    player.isRunning = false;
     // While sitting you can look around but not walk
     if (sitting || player.riding) return;
 
@@ -227,7 +244,9 @@ export function createPlayer(camera, domElement, groundHeight, pushOutOfObstacle
     if (wanted.lengthSq() > 0) wanted.normalize();
 
     const careful = keys.ShiftLeft || keys.ShiftRight;
-    wanted.multiplyScalar((careful ? CAREFUL_SPEED : WALK_SPEED) * player.speedMultiplier);
+    // (running: forwards only, not while walking carefully)
+    player.isRunning = player.running && player.canRun && !careful && wanted.y > 0.5;
+    wanted.multiplyScalar((player.isRunning ? RUN_SPEED : careful ? CAREFUL_SPEED : WALK_SPEED) * player.speedMultiplier);
 
     // Ease the current speed toward the wanted speed instead of jumping to it
     const blend = 1 - Math.exp(-ACCELERATION * dt);

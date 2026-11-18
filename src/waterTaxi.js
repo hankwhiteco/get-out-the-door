@@ -17,6 +17,7 @@ export function createWaterTaxi({ dock, waterLevel }) {
   const uz = dz / Math.hypot(dx, dz);
   const group = new THREE.Group();
   const boat = buildTaxi();
+  boat.userData.notOnMap = true; // (it moves: the map draws just the dock)
   group.add(boat);
   // (beside the end of the dock, its bow pointing out along it)
   const at = { x: dock.end.x - ux * 3.2 - uz * 2.3, z: dock.end.z - uz * 3.2 + ux * 2.3 };

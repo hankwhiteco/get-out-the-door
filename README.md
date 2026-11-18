@@ -8,7 +8,7 @@ It needs a keyboard and mouse (best on a computer). Your progress is saved in yo
 
 ## Controls
 
-- **Mouse**: look around · **W A S D**: walk · **Shift**: walk carefully
+- **Mouse**: look around · **W A S D**: walk · **W twice** (and hold): run · **Shift**: walk carefully
 - **E**: do things (sit, pitch your tent, sleep, shop, ride, read…)
 - **Q**: eat a snack · **C**: cook at your campfire · **R**: roast a marshmallow
 - **M**: map · **J**: journal · **I**: backpack · **O**: wardrobe · **1–9**: your tools

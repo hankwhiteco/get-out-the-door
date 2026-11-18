@@ -20,6 +20,7 @@ export function createPrairie({ scene, groundHeight, waterDepth, nearestTrail, i
   const random = seededRandom(19);
   const group = new THREE.Group();
   scene.add(group);
+  group.userData.onMap = true; // (the map draws its buildings from above: see map.js)
   const prairie = { group, bison: [], fields: [], tower: null, herdCenter: new THREE.Vector3() };
 
   // ---------- Wildflower fields ----------
@@ -77,6 +78,7 @@ export function createPrairie({ scene, groundHeight, waterDepth, nearestTrail, i
       const right = new THREE.Mesh(wing, wingMaterial);
       right.rotation.y = Math.PI;
       fly.add(left, right);
+      fly.userData.notOnMap = true; // (it moves: not drawn on the map)
       group.add(fly);
       butterflies.push({ fly, left, right, field, phase: random() * 10, speed: 0.4 + random() * 0.4 });
     }
@@ -206,6 +208,7 @@ export function createPrairie({ scene, groundHeight, waterDepth, nearestTrail, i
     // One piece each for the body, the head and every leg (the head and legs move)
     mergeStill(bison, [head, ...legs]);
     mergeStill(head);
+    bison.userData.notOnMap = true;
     group.add(bison);
     return { group: bison, head, legs };
   }

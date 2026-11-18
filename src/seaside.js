@@ -15,6 +15,7 @@ const at = (mesh, x, y, z) => {
 export function createSeaside({ scene, groundHeight, islands = [], whaleLane = null, seaLevel = 0 }) {
   const group = new THREE.Group();
   scene.add(group);
+  group.userData.onMap = true; // (the map draws its buildings from above: see map.js)
   const updates = []; // things that move, called every frame with the time
   const seaside = {
     group,
@@ -59,6 +60,7 @@ export function createSeaside({ scene, groundHeight, islands = [], whaleLane = n
       left.rotation.y = Math.PI; // (pointing the other way)
       const right = new THREE.Mesh(wingShape, grey);
       bird.add(left, right);
+      bird.userData.notOnMap = true; // (it moves: not drawn on the map)
       group.add(bird);
       const radius = 6 + Math.random() * 10;
       const height = 9 + Math.random() * 8;
@@ -100,6 +102,7 @@ export function createSeaside({ scene, groundHeight, islands = [], whaleLane = n
       turtle.position.copy(spot);
       // Facing out to sea
       turtle.rotation.y = Math.atan2(-Math.cos(angle), -Math.sin(angle)) + (Math.random() - 0.5) * 0.8;
+      turtle.userData.notOnMap = true;
       group.add(turtle);
       seaside.turtles.push(turtle);
       updates.push((time) => {
@@ -207,6 +210,7 @@ export function createSeaside({ scene, groundHeight, islands = [], whaleLane = n
       spout.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 1), sprayMaterial), 0, 6.3, 0));
       spout.position.set(0, 1.4, -4.8);
       whale.add(body, fin, tail, spout);
+      whale.userData.notOnMap = true;
       group.add(whale);
       const state = { group: whale, surfaced: false, spouting: false };
       seaside.whales.push(state);

@@ -116,6 +116,7 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
       pack.discoveries = data.pack.discoveries ?? [];
       pack.finds = data.pack.finds ?? [];
       pack.laps = data.pack.laps ?? {}; // (best lap times on the ATV tracks)
+      pack.bikeLook = data.pack.bikeLook ?? null; // (how you've made your bike look: M34)
       pack.lawn = data.pack.lawn ?? {}; // (your best at the lawn games)
       pack.contests = data.pack.contests ?? []; // (your fishing contest trophies)
       pack.wildlife = data.pack.wildlife ?? {}; // (your wildlife page: M26)

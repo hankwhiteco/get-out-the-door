@@ -194,6 +194,7 @@ function fossilTexture(kind) {
 export function createDesert({ scene, groundHeight, waterDepth, nearestTrail, trails, camps, buttes = [], slot = null, stargazingNear = null }) {
   const group = new THREE.Group();
   scene.add(group);
+  group.userData.onMap = true; // (the map draws its buildings from above: see map.js)
   const desert = { group, finds: [], deck: null, planets: null, targets: [] };
   const rock = mat(0x9a4a32);
   const flatSpot = (x, z) => waterDepth(x, z) === 0 && Math.hypot(groundHeight(x + 1, z) - groundHeight(x, z), groundHeight(x, z + 1) - groundHeight(x, z)) < 0.4;

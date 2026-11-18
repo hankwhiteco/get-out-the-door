@@ -15,6 +15,7 @@ import { createContest } from './contest.js';
 import { createAnimals } from './animals.js';
 import { createBirds } from './birds.js';
 import { createWildlifeLog, speciesId } from './wildlifeLog.js';
+import { createSpiders } from './spiders.js';
 import { createDog, BREEDS, DOG_FINDS } from './dog.js';
 import { createAdoption } from './adopt.js';
 import { createLibrary, BOOKS, BOOK_XP } from './books.js';
@@ -55,7 +56,7 @@ import { createWaterTaxi } from './waterTaxi.js';
 import { createMusic } from './music.js';
 import { createRadio } from './radio.js';
 import { PLACES, createCabin, createDock, createZipline, createArcheryRange, createStable, createRink } from './places.js';
-import { createATV, createBike, createBoat, createBarge, createGlider, createHorse, createRV } from './vehicles.js';
+import { createATV, createBike, createBoat, createBarge, createGlider, createHorse, createRV, DEFAULT_BIKE } from './vehicles.js';
 import { createForaging } from './forage.js';
 import { PARK, PARKS, PARK_ID, travelTo } from './park.js';
 import { createLandmark } from './landmarks.js';
@@ -493,6 +494,25 @@ const hike = {
   meters: 0, // distance walked
 };
 
+// ---------- Running (M34): W twice quickly, and hold it ----------
+// Almost twice as fast as walking, but it tires you out and makes you thirsty faster. Not
+// while swimming, in deep snow, with the camera up, or when you're worn out.
+let ranBefore = false;
+let toldTooTired = 0;
+function updateRunning(swimming) {
+  const wornOut = energy.value < 12 || energy.water < 8;
+  player.canRun = !swimming && !photo.raised && !wornOut && snowSlow() > 0.85 && !state.inBasement;
+  if (player.running && wornOut && performance.now() - toldTooTired > 15000) {
+    toldTooTired = performance.now();
+    showToast('😮‍💨 Too tired to run. Have a snack (Q), a drink, or a sit-down first.');
+  }
+  if (player.isRunning && !ranBefore) {
+    ranBefore = true;
+    showToast('🏃 Running! It tires you out (and makes you thirsty) faster. Let go of W to walk again.');
+  }
+  document.body.classList.toggle('running', player.isRunning);
+}
+
 function startTrail(trail) {
   if (player.sitting) player.standUp();
   // (a day of the traverse: M30)
@@ -734,6 +754,7 @@ window.addEventListener('keydown', (e) => {
       audio.plop?.(0.15);
     } else if (lawnGames.active === 'horseshoes' || lawnGames.active === 'frisbee') lawnGames.throwIt(); // a lawn game: throw
     else if (riding === 'horse') horse.startJump(); // jump!
+    else if (riding === 'bike' && pack.bikeLook?.bell) audio.bell?.(); // ding-ding! (M34)
     else if (skates.on) skates.spin(); // spin on the ice
     else useTool();
   }
@@ -803,9 +824,11 @@ function eat(kind) {
 
 function updateEnergy(dt, walked, climbed) {
   energy.effort = restedDay === sky.day && sky.hour < 12 ? 0.75 : 1; // (well rested from the big tent)
-  if (player.active) energy.update(dt, walked, climbed, player.sitting);
+  // (running tires you out and makes you thirsty faster: each meter counts one and a half: M34)
+  if (player.active) energy.update(dt, walked * (player.isRunning ? 1.5 : 1), climbed, player.sitting);
   // Tired = slower. Walking with the camera up is slower too, and so is swimming.
   const swimming = isSwimming();
+  updateRunning(swimming);
   swimmingBefore = swimming;
   player.speedMultiplier = energy.speedMultiplier * (photo.raised ? 0.4 : 1) * (swimming ? 0.55 : 1) * snowSlow();
   // (soaking in a cabin's hot tub, bath or pool: your energy comes back. M29)
@@ -1797,6 +1820,12 @@ const store = createOutfitter({
   lent: (id) => id === 'canoe' && borrowingCanoe(), // (the Outfitter fetches its own canoe back too)
   // Services → 🐕 Adopt a trail dog (M28: there's no dog yard any more)
   onAdopt: () => openAdopt('golden'),
+  // 🚲 Bike shop (M34): how your bike looks, and changing it
+  bikeLook: () => bikeLook(),
+  onBikeLook: (look) => {
+    setBikeLook(look);
+    audio.plop?.(0.3);
+  },
   // Services → 🏆 Fishing contest (contest.js)
   onContest: () => {
     store.close();
@@ -1827,6 +1856,8 @@ const store = createOutfitter({
     pack.money -= item.price;
     audio.plop?.(0.4);
     if (item.gear) pack.owned[item.id] = true;
+    // A part for your bike: on it goes (M34)
+    if (item.bikePart) setBikeLook({ ...bikeLook(), ...item.bikePart });
     // New clothes: put them on straight away (friends see them too)
     if (item.slot) {
       pack.look = { ...pack.look, [item.slot]: item.style };
@@ -1871,7 +1902,7 @@ const store = createOutfitter({
       rv: `Your RV is parked at the trailhead${PARK.valleyFeatures ? '' : ' (in every park)'}. Walk to the driver's door and press E.`,
     };
     const valleyOnly = ['skates', 'climbing', 'cabin'].includes(item.id) && !PARK.valleyFeatures;
-    const wearing = item.slot && `A new ${item.name.toLowerCase()}! You've got it on. Change your look any time in your wardrobe (O).`;
+    const wearing = (item.slot && `A new ${item.name.toLowerCase()}! You've got it on. Change your look any time in your wardrobe (O).`) || (item.bikePart && `${item.name} for your bike! ${item.about}`);
     showToast(`${item.icon} ${bought[item.id] ?? wearing ?? `${item.name}: ${item.about}`}${valleyOnly ? ' (Take the shuttle to Pinewood Valley.)' : ''}`);
     if (item.id === 'rv') parkRV();
     showOwnedThings();
@@ -2652,7 +2683,21 @@ function openAdopt(breed, options = {}) {
   adoption.open(breed, options);
 }
 // What friends see of how you look: your clothes, and your dog's name
-const lookForFriends = () => (pack.dog ? { ...pack.look, dogName: pack.dog.name } : pack.look);
+const lookForFriends = () => ({ ...pack.look, ...(pack.dog ? { dogName: pack.dog.name } : {}), bike: pack.bikeLook ?? null });
+
+// ---------- Your bike, your way (M34: the Outfitter's bike shop) ----------
+const bikeLook = () => ({ ...DEFAULT_BIKE, ...(pack.bikeLook ?? {}) });
+function setBikeLook(look) {
+  pack.bikeLook = { ...DEFAULT_BIKE, ...look };
+  bike.setLook(pack.bikeLook);
+  mp.setLook(lookForFriends());
+  save();
+}
+// Its headlight lights the way when you ride after dark (the flashlight's beam does the lighting)
+function updateBikeLight() {
+  const bikeLight = riding === 'bike' && pack.bikeLook?.light && sky.daylight < 0.45;
+  beam.intensity = tool === 'flashlight' || bikeLight ? 30 : 0;
+}
 
 // Things your dog does that you hear about
 function dogEvent(what, details) {
@@ -3559,13 +3604,15 @@ const binocularLabel = document.getElementById('binoculars-label');
 const DEER_KIND = { deer: 'deer', 'mountain goat': 'mountain-goat', pronghorn: 'pronghorn', 'bighorn sheep': 'bighorn-sheep' }[PARK.wildlife?.name ?? 'deer'] ?? 'deer';
 function wildThings() {
   const list = [];
-  const add = (id, object, size) => {
+  // (near: how close you have to be to make it out in a photo, for little things like spiders)
+  const add = (id, object, size, near) => {
     if (!object || !object.visible) return;
     const position = new THREE.Vector3();
     object.getWorldPosition(position);
     position.y += size * 0.5;
-    list.push({ id, position, size });
+    list.push({ id, position, size, near });
   };
+  for (const t of spiders.things()) add(t.id, t.object, t.size, t.near); // (M34)
   for (const deer of wildlife.standing()) add(DEER_KIND, deer.group, 1.4);
   for (const fawn of wildlife.fawns) add('fawn', fawn.group, 0.9); // (spring: M28)
   for (const bison of prairie?.bison ?? []) add('bison', bison.group, 1.8);
@@ -3578,6 +3625,30 @@ function wildThings() {
   return list;
 }
 const wildlifeLog = createWildlifeLog({ pack, camera, sky, groundHeight, things: wildThings, parkId: PARK_ID, xp: XP.wildlife, awardXP, showToast });
+
+// ---------- Spiders (M34: see spiders.js) ----------
+// Orb-weavers in their webs beside the trails (not in the desert), and the desert's tarantula
+const spiders = createSpiders({
+  scene,
+  trails: trails.filter((t) => !t.island),
+  groundHeight,
+  // (a spot for a web, or the tarantula's stroll: dry, not too steep, off the trails, and with
+  // nothing in the way)
+  isClear: (x, z) => {
+    if (waterDepth(x, z) > 0 || slopeAt(x, z) > 0.6 || nearestTrail(x, z).dist < 1.8) return false;
+    const spot = new THREE.Vector3(x, 0, z);
+    pushOutOfObstacles(spot, 0.7);
+    return spot.x === x && spot.z === z;
+  },
+  webs: PARK_ID === 'desert' ? 0 : 12,
+  tarantula: PARK_ID === 'desert',
+  home: (trails.find((t) => !t.traverse) ?? trails[0]).path.samples[0],
+  seed: PARK.seed ?? 7,
+});
+function updateSpiders(dt) {
+  const through = spiders.update(dt, { you: player.active ? camera.position : null, hour: sky.hour, day: sky.day, season: seasons.id, raining: weather.rain > 0.3 });
+  if (through) showToast('🕸 Oops! You walked right through a spider’s web. (The spider’s fine: it’ll spin a new one tonight.)');
+}
 photo.onWildlife = (image) => wildlifeLog.photographed(image);
 // Your first selfie (selfie mode: X with the camera up) earns a little XP
 photo.onSelfie = () => {
@@ -3607,14 +3678,23 @@ document.getElementById('journal-close').addEventListener('click', toggleJournal
 
 // ---------- Compass and map ----------
 const compass = createCompass();
+// The buildings, bridges, docks and towers the map draws from above, in their real shape (M34).
+// (Things that move, like the ferry, the vehicles and the animals, aren't on it; nor is Frost
+// Pond's ice, which would look like a building.)
+for (const thing of [bridges.group, lift.group, cabin.group, dock.group, zipline.group, archery.group, stable.group, waterTaxi?.group, outfitterPlace.group, camper.group, parkCabin?.group, lodge?.group, landmark?.group]) {
+  if (thing) thing.userData.onMap = true;
+}
 const map = createMap({
   trails,
   tracks: TRACKS,
   getHeight,
   waterDepth,
+  waterSurface,
   foliage,
   camps,
   completed,
+  scene,
+  terrainMesh,
   // Extra things to mark on the map: your ATV, boat and cabin, and Eagle Rock
   markers: () => [
     ...mp.markers(), // friends in this park
@@ -3718,7 +3798,7 @@ function distanceToStream(x, z) {
 function updateSound(dt, walked) {
   const { x, z } = camera.position;
   sinceLastStep += player.skiing ? 0 : walked;
-  if (sinceLastStep >= STRIDE) {
+  if (sinceLastStep >= (player.isRunning ? STRIDE * 1.5 : STRIDE)) {
     sinceLastStep = 0;
     audio.footstep(surfaceAt(x, z));
   }
@@ -3893,6 +3973,8 @@ function frame(time) {
   snowmen.update(dt);
   updateEnergy(dt, walked, climbed);
   updateHike(dt, walked);
+  updateBikeLight();
+  updateSpiders(dt);
   // A problem with sound should never stop the game, so catch it and carry on
   try {
     updateSound(dt, walked);
@@ -4145,6 +4227,7 @@ const recovered = fromBrowser ? null : await recoverFromDisk();
 const saved = fromBrowser ?? recovered;
 countPlay({ newHiker: !saved }); // (the published game adds 1 to a public counter: see playerCount.js)
 const beenHere = saved ? saving.restore(saved) : false;
+if (pack.bikeLook) bike.setLook(pack.bikeLook); // (your bike as you made it: M34)
 makeDog(); // (your dog, if you have one: M27)
 seasons.update(); // (this park in today's season, from your save's day: M28)
 snowmen.load((x, z) => snowAllYear(x, z) || seasons.id === 'winter'); // (the ones you built, unless they've melted)
