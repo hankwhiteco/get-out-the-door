@@ -135,7 +135,7 @@ import { SPECIES } from './wildlifeLog.js';
 import { BREEDS, DOG_FINDS } from './dog.js';
 import { SEASON_IDS, seasonSightId } from './parkSights.js';
 
-export function createJournal(photo, sights, pack) {
+export function createJournal(photo, sights, pack, badges = null) {
   const panel = document.getElementById('journal');
   const grid = document.getElementById('journal-grid');
   const roll = document.getElementById('journal-roll');
@@ -182,6 +182,8 @@ export function createJournal(photo, sights, pack) {
   // Rebuild the page from the current photos
   function draw() {
     drawLevel();
+    // Your badges (M32, badges.js)
+    if (badges) badges.draw(document.getElementById('journal-badges'), document.getElementById('journal-badges-count'));
     const found = Object.keys(photo.found).length;
     count.textContent = `${found} of ${sights.length} sights`;
 

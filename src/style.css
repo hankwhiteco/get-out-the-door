@@ -2646,3 +2646,138 @@ body.titling #prompt {
     animation: none;
   }
 }
+
+/* ---------- Badges (M32): the journal's Badges page, and the patch that pops up for a new one ---------- */
+#journal-badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.badge {
+  margin: 0;
+  padding: 10px 8px 9px;
+  border-radius: 10px;
+  background: #fff;
+  text-align: center;
+  color: #3b3a30;
+}
+
+/* The patch: round, with a stitched edge, like the ones you sew on a backpack */
+.badge-patch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 7px;
+  border-radius: 50%;
+  border: 3px dashed #c9c2ad;
+  background: #ece6d6;
+  font-size: 28px;
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.badge.earned .badge-patch {
+  border-color: #f2d27a;
+  background: radial-gradient(circle at 50% 40%, #4f8a5a, #2f5a3b);
+  box-shadow: 0 0 0 3px #2f5a3b, 0 3px 8px rgba(0, 0, 0, 0.25);
+  filter: none;
+  opacity: 1;
+}
+
+.badge-name {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.badge-about {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #6b6a5c;
+}
+
+.badge:not(.earned) .badge-name {
+  color: #8a8778;
+}
+
+.badge-bar {
+  height: 5px;
+  margin: 7px 10px 0;
+  border-radius: 3px;
+  background: #ece6d6;
+  overflow: hidden;
+}
+
+.badge-bar div {
+  height: 100%;
+  background: #6f9e4c;
+}
+
+.badge-note {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #8a8778;
+}
+
+.badge.earned .badge-note {
+  color: #4f8a5a;
+  font-weight: 600;
+}
+
+#badge-pop {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 26;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 10px 16px 10px 10px;
+  border-radius: 14px;
+  background: rgba(30, 30, 25, 0.78);
+  color: #fff;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 0.35s, transform 0.35s;
+}
+
+#badge-pop.show {
+  opacity: 1;
+  transform: none;
+}
+
+#badge-pop .badge-patch {
+  flex: none;
+  margin: 0;
+  border-color: #f2d27a;
+  background: radial-gradient(circle at 50% 40%, #4f8a5a, #2f5a3b);
+  box-shadow: 0 0 0 3px #2f5a3b;
+  filter: none;
+  opacity: 1;
+}
+
+.badge-pop-title {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.badge-pop-name {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.badge-pop-about {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* "Say hi!" on the start card (M38): hidden until there is a guestbook link (main.js GUESTBOOK) */
+#say-hi-button.hidden {
+  display: none;
+}

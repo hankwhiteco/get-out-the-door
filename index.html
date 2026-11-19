@@ -126,6 +126,7 @@
         <div id="card-actions">
           <button id="friends-button">👥 Friends</button>
           <button id="settings-button">⚙ Settings</button>
+          <button id="say-hi-button" class="hidden" title="Leave a message for whoever made the game">👋 Say hi!</button>
         </div>
         <div id="friends-panel" class="hidden">
           <p class="friends-intro">Hike with friends online! Everyone who types the same room code meets up. Only people you give the code to can join.</p>
@@ -429,6 +430,10 @@
           <button id="journal-close">Back to hiking</button>
         </header>
         <div id="journal-level"></div>
+        <h3>Badges</h3>
+        <div id="journal-badges-count" class="journal-subcount"></div>
+        <div id="journal-badges"></div>
+        <h3>Sights</h3>
         <div id="journal-grid"></div>
         <h3>The four seasons</h3>
         <div id="journal-seasons-count" class="journal-subcount"></div>
@@ -449,6 +454,16 @@
 
     <!-- Black screen used when you go to sleep -->
     <div id="fade"></div>
+
+    <!-- A new badge (M32): a little patch that pops up in the top-right corner -->
+    <div id="badge-pop">
+      <div class="badge-patch"></div>
+      <div>
+        <div class="badge-pop-title">🏅 New badge!</div>
+        <div class="badge-pop-name"></div>
+        <div class="badge-pop-about"></div>
+      </div>
+    </div>
 
     <!-- Short messages that fade away, top middle -->
     <div id="toast"></div>

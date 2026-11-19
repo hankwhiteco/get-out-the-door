@@ -16,6 +16,7 @@ import { createAnimals } from './animals.js';
 import { createBirds } from './birds.js';
 import { createWildlifeLog, speciesId } from './wildlifeLog.js';
 import { createSpiders } from './spiders.js';
+import { createBadges, BADGES } from './badges.js';
 import { createDog, BREEDS, DOG_FINDS } from './dog.js';
 import { createAdoption } from './adopt.js';
 import { createLibrary, BOOKS, BOOK_XP } from './books.js';
@@ -48,7 +49,7 @@ import { createChairlift, onSnow, skiMask, HAS_SKI_HILL } from './ski.js';
 import { createFishing, RODS } from './fishing.js';
 import { createWildlife } from './wildlife.js';
 import { loadGame, recoverFromDisk, loadSettings, saveSettings, TESTING, replaceSave } from './save.js';
-import { countPlay } from './playerCount.js';
+import { countPlay, countMoment } from './playerCount.js';
 import { createSaving } from './saving.js';
 import { createOutfitter, createTravelBoard, SHOP, XP, PAY, START_MONEY, levelFor } from './outfitter.js';
 import { createOutfitterBuilding } from './outfitterBuilding.js';
@@ -559,6 +560,7 @@ function updateHike(dt, step) {
     hike.justFinished = true;
     const firstTime = !completed.has(hike.trail.id);
     completed.add(hike.trail.id);
+    countMoment('trails-finished'); // (everyone's total, on the stats page: M38)
     const reward = firstTime ? XP.trail[hike.trail.id] ?? hike.trail.xp ?? 50 : XP.trailAgain;
     const pay = firstTime ? PAY.trail[hike.trail.id] ?? hike.trail.pay ?? 20 : PAY.trailAgain;
     awardXP(reward, `for finishing ${hike.trail.name}`, pay);
@@ -1172,6 +1174,7 @@ const pack = {
   cabinTrophies: 0, // trophies hung up in your cabin
   dog: null, // your hiking dog (M27): { breed, name, water, adopted, fetched, bears, birds, pets, found }
   snowmen: {}, // the snowmen you've built (M28): { park: [{ x, z, yaw, color }] }
+  badges: {}, // the badges you've earned (M32, badges.js): { id: the day you earned it }
 };
 snowmen = createSnowmen({ scene, groundHeight, pack, parkId: PARK_ID }); // (M28: see "Snowmen" further up)
 
@@ -1556,6 +1559,7 @@ const fishing = createFishing({
     // (no room in your backpack? It still counts in your journal, but you let it go)
     const kept = backpack.add('fish', 1, fish);
     pack.catches.push(fish);
+    countMoment('fish-caught'); // (everyone's total: M38)
     contest.caught(fish); // (a fishing contest on? It counts)
     const best = Math.max(...pack.catches.filter((c) => c.species === fish.species).map((c) => c.size));
     const record = best === fish.size && pack.catches.filter((c) => c.species === fish.species).length > 1 ? '  New personal best!' : '';
@@ -2301,6 +2305,7 @@ function traverseDayDone(trail) {
     );
   } else {
     pack.traverse.done = { day: sky.day, meters: Math.round(pack.traverse.meters), days: sky.day - (pack.traverse.startedOn ?? sky.day) + 1 };
+    countMoment('traverses-finished'); // (everyone's total: M38)
     if (!pack.finds.some((f) => f.id === 'traverse')) pack.finds.push({ id: 'traverse', name: `Hiked the ${TRAVERSE.name}`, icon: '🎒' });
     awardXP(TRAVERSE.xp, `for the ${TRAVERSE.name}!`, TRAVERSE.pay);
     traversePanel.open('certificate');
@@ -3671,7 +3676,11 @@ function updateSpiders(dt) {
   const through = spiders.update(dt, { you: player.active ? camera.position : null, hour: sky.hour, day: sky.day, season: seasons.id, raining: weather.rain > 0.3 });
   if (through) showToast('🕸 Oops! You walked right through a spider’s web. (The spider’s fine: it’ll spin a new one tonight.)');
 }
-photo.onWildlife = (image) => wildlifeLog.photographed(image);
+photo.onWildlife = (image) => {
+  const fresh = wildlifeLog.photographed(image);
+  for (let i = 0; i < (fresh?.length ?? 0); i++) countMoment('animals-photographed'); // (everyone's total: M38)
+  return fresh;
+};
 // Your first selfie (selfie mode: X with the camera up) earns a little XP
 photo.onSelfie = () => {
   if (pack.discoveries.includes('selfie')) return;
@@ -3681,7 +3690,45 @@ photo.onSelfie = () => {
 photo.onNewSights = (count) => {
   awardXP(count * XP.sight, count > 1 ? 'for new sights' : 'for a new sight', count * PAY.sight);
 };
-const journal = createJournal(photo, sights, pack);
+// ---------- Badges (M32, see badges.js) ----------
+// Checked every couple of seconds, once your save's loaded (badgesOn). A new one pops up as a
+// little patch in the top-right corner, with a chime (so it doesn't cover other messages).
+let badgesOn = false;
+const badgePop = document.getElementById('badge-pop');
+const badgeQueue = [];
+function popNextBadge() {
+  if (badgePop.classList.contains('show') || !badgeQueue.length) return;
+  const b = badgeQueue.shift();
+  badgePop.querySelector('.badge-patch').textContent = b.icon;
+  badgePop.querySelector('.badge-pop-name').textContent = b.name;
+  badgePop.querySelector('.badge-pop-about').textContent = b.about;
+  badgePop.classList.add('show');
+  audio.badge?.();
+  setTimeout(() => {
+    badgePop.classList.remove('show');
+    setTimeout(popNextBadge, 700); // (the next one, if you earned a few at once)
+  }, 4500);
+}
+const badges = createBadges({
+  pack,
+  completed,
+  photo,
+  parks: () => saving.visitedParks(),
+  day: () => sky.day,
+  onEarned: (fresh, quietly) => {
+    // (how many players have each badge, on the stats page: M38. A few seconds apart, to go easy
+    // on the counter)
+    fresh.forEach((b, i) => setTimeout(() => countMoment(`badge-${b.id}`), i * 1500));
+    // (an older save: the ones you'd already earned, quietly, and how many)
+    if (quietly) {
+      if (fresh.length) setTimeout(() => showToast(`🏅 Your journal (J) has a new Badges page, and you've already earned ${fresh.length} of ${BADGES.length}!`), 3000);
+      return;
+    }
+    badgeQueue.push(...fresh);
+    popNextBadge();
+  },
+});
+const journal = createJournal(photo, sights, pack, badges);
 
 function toggleJournal() {
   if (journal.isOpen) {
@@ -3997,6 +4044,7 @@ function frame(time) {
   updateHike(dt, walked);
   updateBikeLight();
   updateSpiders(dt);
+  if (badgesOn) badges.update(dt);
   // A problem with sound should never stop the game, so catch it and carry on
   try {
     updateSound(dt, walked);
@@ -4097,7 +4145,7 @@ function frame(time) {
 renderer.setAnimationLoop(frame);
 
 // Handy for poking around in the browser console
-window.game = { traversePanel, traverseLeg, traverseSpots, continueTraverse, traverseAction, library, waterTaxi, inBasement: () => state.inBasement, lodge: () => lodge, cafe, eating: () => state.eating, spotsTook: () => spotsTook, parkCabin: () => parkCabin, ownsCabin, cabinAction, seasonFx, seasons, terrainMesh, snowmen: () => snowmen, iceAt, snowHere, frozen: () => frozenWater, buildSnowman, iceHole, dog: () => dog, openAdopt, dogFinds, adoption, makeDog, forgetDog, dogDrinkSpot, dogMode, dogBowl, updateDog, getOff, parkATV, animals, birds, wildlifeLog, wildThings, bearVisit, contest, barge, cargo: () => cargo, dockBoat, ferry, tracks: TRACKS, lap, friends, party, picnic, lawnGames, wardrobe, shelter, goToShelter, camper, celebrateLevel, backpack, backpackScreen, hotbar, chests, openChest, cooking, cook, tool: () => tool, store, travel, outfitterPlace, parkId: PARK_ID, snapshot: () => saving.snapshot(), currentAction: () => currentAction(), crags, slopeAt, isCliff, climbing, topOut: () => climbing.topOut, desert, stargazing: () => state.stargazing, seaScope: () => state.seaScope, prairie, onPlatform: () => state.onPlatform, seaside, lakeside, foraging, spots, hitch, showOwnedThings, mp, rv, rvHome, parkRV, goToPark, shopHint, horse, rink, stable, foraging, isSkating: () => skates.on, tick: frame, frameTimes, renderer, bike, zipline, archery, cabin, cabinSpots, awardXP, isSwimming, radio, atv, boat, glider, music, riding: () => riding, lift, pack, selectTool, fishing, wildlife, weather, audio, walkHeight, waterDepth, bridges, scene, camera, player, foliage, hike, trails, completed, startTrail, energy, rest, sky, camps, photo, journal, sights, map };
+window.game = { badges, traversePanel, traverseLeg, traverseSpots, continueTraverse, traverseAction, library, waterTaxi, inBasement: () => state.inBasement, lodge: () => lodge, cafe, eating: () => state.eating, spotsTook: () => spotsTook, parkCabin: () => parkCabin, ownsCabin, cabinAction, seasonFx, seasons, terrainMesh, snowmen: () => snowmen, iceAt, snowHere, frozen: () => frozenWater, buildSnowman, iceHole, dog: () => dog, openAdopt, dogFinds, adoption, makeDog, forgetDog, dogDrinkSpot, dogMode, dogBowl, updateDog, getOff, parkATV, animals, birds, wildlifeLog, wildThings, bearVisit, contest, barge, cargo: () => cargo, dockBoat, ferry, tracks: TRACKS, lap, friends, party, picnic, lawnGames, wardrobe, shelter, goToShelter, camper, celebrateLevel, backpack, backpackScreen, hotbar, chests, openChest, cooking, cook, tool: () => tool, store, travel, outfitterPlace, parkId: PARK_ID, snapshot: () => saving.snapshot(), currentAction: () => currentAction(), crags, slopeAt, isCliff, climbing, topOut: () => climbing.topOut, desert, stargazing: () => state.stargazing, seaScope: () => state.seaScope, prairie, onPlatform: () => state.onPlatform, seaside, lakeside, foraging, spots, hitch, showOwnedThings, mp, rv, rvHome, parkRV, goToPark, shopHint, horse, rink, stable, foraging, isSkating: () => skates.on, tick: frame, frameTimes, renderer, bike, zipline, archery, cabin, cabinSpots, awardXP, isSwimming, radio, atv, boat, glider, music, riding: () => riding, lift, pack, selectTool, fishing, wildlife, weather, audio, walkHeight, waterDepth, bridges, scene, camera, player, foliage, hike, trails, completed, startTrail, energy, rest, sky, camps, photo, journal, sights, map };
 
 // ---------- Settings: field of view, mouse sensitivity, volume ----------
 const settings = loadSettings();
@@ -4247,7 +4295,8 @@ applySettings();
 const fromBrowser = loadGame();
 const recovered = fromBrowser ? null : await recoverFromDisk();
 const saved = fromBrowser ?? recovered;
-countPlay({ newHiker: !saved }); // (the published game adds 1 to a public counter: see playerCount.js)
+// (the published game adds 1 to a public counter: see playerCount.js)
+countPlay({ newHiker: !saved, parkId: PARK_ID, phone: matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches });
 const beenHere = saved ? saving.restore(saved) : false;
 if (pack.bikeLook) bike.setLook(pack.bikeLook); // (your bike as you made it: M34)
 makeDog(); // (your dog, if you have one: M27)
@@ -4255,6 +4304,7 @@ seasons.update(); // (this park in today's season, from your save's day: M28)
 snowmen.load((x, z) => snowAllYear(x, z) || seasons.id === 'winter'); // (the ones you built, unless they've melted)
 if (recovered) setTimeout(() => showToast('💾 This browser had lost your save, so it was put back from the copy on your computer. Welcome back!'), 1500);
 saving.startSaving(); // (only now: if loading had gone wrong, your save is left as it was)
+badgesOn = true; // (and the badges start checking: M32)
 // A vehicle saved where something has since been built (like the Outfitter) would be stuck
 // in it, and one saved out on the barge would be in the water (the barge waits at the shore
 // when you come back): send it back to where it waits instead
@@ -4333,6 +4383,16 @@ if (!TESTING) {
   };
   titleScreen.addEventListener('click', carryOn);
   window.addEventListener('keydown', carryOn, true);
+}
+
+// ---------- "Say hi!" (M38) ----------
+// A button on the start card that opens a little guestbook form (a Google Form), where players
+// can leave a nickname and a message if they'd like to. It only shows once there's a link here.
+const GUESTBOOK = '';
+const sayHi = document.getElementById('say-hi-button');
+if (GUESTBOOK) {
+  sayHi.classList.remove('hidden');
+  sayHi.addEventListener('click', () => window.open(GUESTBOOK, '_blank', 'noopener'));
 }
 
 // ---------- The loading screen (M35, M37) ----------

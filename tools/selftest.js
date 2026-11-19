@@ -387,6 +387,22 @@ export async function runSelfTest({ only = null } = {}) {
     tick(2);
   });
 
+  // ---------- M32: badges ----------
+  await part('badges', () => {
+    const was = { catches: pack.catches.length, badges: { ...(pack.badges ?? {}) } };
+    pack.catches.push({ species: 'Test trout', size: 20 });
+    g.badges.check();
+    const got = !!pack.badges['first-fish'];
+    g.journal.open();
+    const cards = document.querySelectorAll('#journal-badges .badge').length;
+    const earned = document.querySelectorAll('#journal-badges .badge.earned').length;
+    g.journal.close();
+    // (back as it was)
+    pack.catches.length = was.catches;
+    pack.badges = was.badges;
+    check('badges: your first fish earns First Catch, and the journal shows every badge', got && cards >= 20 && earned >= 1, `${cards} badges on the page, ${earned} earned`);
+  });
+
   // The Ridge to Sea Traverse (M30): the board, each day's leg, the pass, the food cache, the finish
   if (g.traverseLeg) {
     await part('traverse', async () => {

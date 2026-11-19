@@ -362,6 +362,12 @@ export function createAudio() {
       }
     },
 
+    // A new badge (M32): a bright little three-note chime
+    badge() {
+      if (!ctx || muted) return;
+      [784, 988, 1319].forEach((freq, i) => tone({ freq, volume: 0.1, duration: i === 2 ? 0.5 : 0.14, delay: i * 0.09, type: 'sine' }));
+    },
+
     // Levelling up: a happy rising fanfare
     fanfare() {
       if (!ctx || muted) return;
@@ -390,35 +396,40 @@ export function createAudio() {
       burst({ type: 'highpass', freq: 1500, freqEnd: 3500, volume: 0.1, duration: 0.2 });
     },
 
-    // A loon calling across the lake: a long wail that rises, holds (quavering a little), and
-    // falls away. `pan`: -1 (left) to 1 (right); quieter the further away it is.
+    // A loon calling across the lake (M32: it used to wobble fast and sound like a sheep). The
+    // wail: "ooo-AAH-ooo", a low note that slides smoothly up to a high one, holds, and slides
+    // back down. No wobble; a soft overtone makes it hollow and flute-like. `pan`: -1 (left) to 1
+    // (right); quieter the further away it is.
     loon(pan = 0, volume = 0.07) {
       if (!ctx || muted) return;
       const t = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(470, t);
-      osc.frequency.exponentialRampToValueAtTime(760, t + 0.9);
-      osc.frequency.linearRampToValueAtTime(800, t + 2.2);
-      osc.frequency.exponentialRampToValueAtTime(560, t + 3.2);
-      // (the quaver: a slow wobble in the pitch)
-      const wobble = ctx.createOscillator();
-      wobble.frequency.value = 5.5;
-      const depth = ctx.createGain();
-      depth.gain.value = 9;
-      wobble.connect(depth).connect(osc.frequency);
+      const end = t + 3.7;
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(volume, t + 0.35);
-      gain.gain.setValueAtTime(volume, t + 2.4);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 3.3);
+      gain.gain.exponentialRampToValueAtTime(volume * 0.75, t + 0.5); // (a slow swell)
+      gain.gain.linearRampToValueAtTime(volume, t + 1.1);
+      gain.gain.setValueAtTime(volume, t + 2.5);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
       const panner = ctx.createStereoPanner();
       panner.pan.value = pan;
-      osc.connect(gain).connect(panner).connect(effects);
-      osc.start(t);
-      wobble.start(t);
-      osc.stop(t + 3.4);
-      wobble.stop(t + 3.4);
+      gain.connect(panner).connect(effects);
+      // (the main note, and its quiet overtone an octave up, following the same tune)
+      for (const [times, level] of [[1, 1], [2, 0.1]]) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        const f = osc.frequency;
+        f.setValueAtTime(425 * times, t); // ooo…
+        f.linearRampToValueAtTime(440 * times, t + 0.75);
+        f.exponentialRampToValueAtTime(650 * times, t + 1.1); // …AAH…
+        f.linearRampToValueAtTime(668 * times, t + 2.2);
+        f.exponentialRampToValueAtTime(540 * times, t + 2.6); // …ooo
+        f.linearRampToValueAtTime(525 * times, end);
+        const g = ctx.createGain();
+        g.gain.value = level;
+        osc.connect(g).connect(gain);
+        osc.start(t);
+        osc.stop(end + 0.05);
+      }
     },
 
     // ---------- Birds (M26, birds.js) ----------

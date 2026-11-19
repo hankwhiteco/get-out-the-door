@@ -124,6 +124,7 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
       pack.snowmen = data.pack.snowmen ?? {}; // (the snowmen you've built: M28)
       pack.books = data.pack.books ?? {}; // (the how-to books you've read: M29)
       pack.traverse = data.pack.traverse ?? null; // (the Ridge to Sea Traverse: M30)
+      pack.badges = data.pack.badges ?? null; // (your badges: M32. null: a save from before them)
       pack.coopDay = data.pack.coopDay ?? null; // (the day you last collected eggs from your coop: M29)
       if (data.pack.look) pack.look = data.pack.look; // (how your hiker looks)
       if (pack.treasures.includes(parkId)) seaside?.chest?.setOpen(true, false);
@@ -224,5 +225,7 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
     ready = true;
   }
 
-  return { snapshot, save, autosave, restore, startOver, startSaving };
+  // The parks you've been to (for the badges: M32)
+  const visitedParks = () => [...new Set([...Object.keys(parkSaves), parkId])];
+  return { snapshot, save, autosave, restore, startOver, startSaving, visitedParks };
 }

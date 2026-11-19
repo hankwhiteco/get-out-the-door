@@ -14,7 +14,7 @@ import { PARK } from './park.js';
 //                            the end), `side` = meters to the right (negative = left)
 //   rests                    benches and logs: same `at` / `side`, plus `facing`:
 //                            'trail' to look at the path, 'out' to look away (at the view)
-const VALLEY_TRAILS = [
+export const VALLEY_TRAILS = [
   {
     id: 'hilltop',
     name: 'Hilltop Trail',

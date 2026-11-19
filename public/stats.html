@@ -198,6 +198,65 @@
       .tip strong {
         font-size: 1rem;
       }
+      /* (M38) the sections below the daily chart */
+      h2.section {
+        margin: 32px 0 2px;
+      }
+      .section-sub {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin: 0 0 12px;
+      }
+      .chart-card + .chart-card,
+      .tiles + .chart-card {
+        margin-top: 12px;
+      }
+      /* Bars across: a label, the bar, and its number */
+      .hbars {
+        display: grid;
+        gap: 4px;
+      }
+      .hrow {
+        display: grid;
+        grid-template-columns: minmax(110px, 36%) 1fr 52px;
+        align-items: center;
+        gap: 10px;
+        padding: 3px 4px;
+        border-radius: 6px;
+        outline: none;
+        cursor: default;
+      }
+      .hrow:hover,
+      .hrow:focus-visible {
+        background: var(--surface);
+      }
+      .hrow:focus-visible {
+        box-shadow: inset 0 0 0 2px var(--text-secondary);
+      }
+      .hlabel {
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .htrack {
+        height: 14px;
+      }
+      .hbar {
+        height: 100%;
+        background: var(--bar);
+        border-radius: 0 4px 4px 0;
+      }
+      .hrow:hover .hbar,
+      .hrow:focus-visible .hbar {
+        background: var(--bar-hover);
+      }
+      .hvalue {
+        text-align: right;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-variant-numeric: tabular-nums;
+      }
       details {
         margin-top: 12px;
         color: var(--text-secondary);
@@ -283,11 +342,108 @@
         </details>
       </section>
 
+      <!-- M38: more numbers (all-time totals, counted since November 18, 2026) -->
+      <h2 class="section">Everyone together</h2>
+      <p class="section-sub">Added up across every player, since November 18, 2026</p>
+      <div class="tiles">
+        <div class="tile">
+          <div class="label">Trails finished</div>
+          <div class="value" id="trails">–</div>
+          <div class="note">every time someone reaches the end</div>
+        </div>
+        <div class="tile">
+          <div class="label">Fish caught</div>
+          <div class="value" id="fish">–</div>
+          <div class="note">by everyone together</div>
+        </div>
+        <div class="tile">
+          <div class="label">Animals photographed</div>
+          <div class="value" id="animals">–</div>
+          <div class="note">new kinds on players' wildlife pages</div>
+        </div>
+        <div class="tile">
+          <div class="label">Traverses finished</div>
+          <div class="value" id="traverses">–</div>
+          <div class="note">the three-day Ridge to Sea</div>
+        </div>
+      </div>
+
+      <h2 class="section">How they play</h2>
+      <p class="section-sub">Out of <span id="tracked">–</span> plays since November 18, 2026</p>
+      <div class="tiles">
+        <div class="tile">
+          <div class="label">Stayed 5+ minutes</div>
+          <div class="value" id="stayed5">–</div>
+          <div class="note" id="stayed5-note">plays</div>
+        </div>
+        <div class="tile">
+          <div class="label">Stayed 30+ minutes</div>
+          <div class="value" id="stayed30">–</div>
+          <div class="note" id="stayed30-note">plays</div>
+        </div>
+        <div class="tile">
+          <div class="label">On a phone</div>
+          <div class="value" id="phones">–</div>
+          <div class="note" id="phones-note">plays (the game needs a keyboard and mouse)</div>
+        </div>
+      </div>
+      <section class="chart-card" aria-labelledby="parks-title">
+        <h2 id="parks-title">Which park they play in</h2>
+        <p class="chart-sub">Times each park loaded (trips there too, not reloads)</p>
+        <div class="hbars" id="parks"></div>
+        <div class="tip"></div>
+        <details>
+          <summary>Show as a table</summary>
+          <table>
+            <thead>
+              <tr><th>Park</th><th>Times loaded</th></tr>
+            </thead>
+            <tbody id="parks-table"></tbody>
+          </table>
+        </details>
+      </section>
+
+      <h2 class="section">Levels reached</h2>
+      <p class="section-sub">Players who've reached each level (from the level badges)</p>
+      <div class="tiles">
+        <div class="tile">
+          <div class="label">⭐ Level 5</div>
+          <div class="value" id="level-5">–</div>
+          <div class="note">players</div>
+        </div>
+        <div class="tile">
+          <div class="label">🌟 Level 10</div>
+          <div class="value" id="level-10">–</div>
+          <div class="note">players</div>
+        </div>
+        <div class="tile">
+          <div class="label">🏔️ Level 20</div>
+          <div class="value" id="level-20">–</div>
+          <div class="note">players</div>
+        </div>
+      </div>
+      <section class="chart-card" aria-labelledby="badges-title">
+        <h2 id="badges-title">Badges earned</h2>
+        <p class="chart-sub">How many players have each badge, most first</p>
+        <div class="hbars" id="badges"></div>
+        <div class="tip"></div>
+        <details>
+          <summary>Show as a table</summary>
+          <table>
+            <thead>
+              <tr><th>Badge</th><th>Players</th></tr>
+            </thead>
+            <tbody id="badges-table"></tbody>
+          </table>
+        </details>
+      </section>
+
       <ul class="about">
         <li>Only the published game counts: not playing on your own computer, and never <code>?test</code>. No cookies, and nothing about the player is sent: the game just adds 1.</li>
         <li>It's a rough count. Someone who plays on two computers, or presses Reset progress, counts as two hikers.</li>
         <li>Going to another park, or pressing reload, isn't counted as another play.</li>
         <li>Days go by world time (UTC), so a new day starts in the late afternoon or evening in America.</li>
+        <li>The numbers below the chart started on November 18, 2026. "Stayed" counts the time with the game on screen, across park trips. Players who already had badges from before count them once, the first time they play after that.</li>
         <li><a href="./">▶ Play the game</a></li>
       </ul>
     </main>
@@ -295,13 +451,75 @@
     <script>
       const COUNTER = 'https://abacus.jasoncameron.dev/get/hankwhiteco.github.io/';
       const DAYS = 14;
+      // (M38) the parks and the badges: keep in step with src/park.js and src/badges.js
+      const PARKS = [
+        ['valley', '🌲 Pinewood Valley'],
+        ['marine', '🌊 Seabreeze Marine Park'],
+        ['mountain', '🏔 Summit Peaks'],
+        ['grasslands', '🌾 Prairie Wind Grasslands'],
+        ['desert', '🏜 Red Rock Desert'],
+        ['lake', '🏝 Bluewater Lake'],
+      ];
+      const BADGES = [
+        ['first-trail', '🥾', 'First Steps'],
+        ['trails-5', '🌲', 'Trail Blazer'],
+        ['trails-12', '⛰️', 'Peak Bagger'],
+        ['trails-all', '🗺️', 'Every Last Trail'],
+        ['parks-3', '🚌', 'Park Hopper'],
+        ['parks-all', '🧭', 'Explorer'],
+        ['first-fish', '🐟', 'First Catch'],
+        ['fish-25', '🎣', 'Angler'],
+        ['fish-kinds', '🐠', 'Fish Finder'],
+        ['legend', '✨', 'Legend Hunter'],
+        ['legends-all', '👑', 'Legend of the Parks'],
+        ['animals-5', '📷', 'Wildlife Watcher'],
+        ['animals-15', '🦌', 'Naturalist'],
+        ['animals-all', '🦉', 'Every Creature'],
+        ['level-5', '⭐', 'Seasoned Hiker'],
+        ['level-10', '🌟', 'Trail Veteran'],
+        ['level-20', '🏔️', 'Mountain Legend'],
+        ['traverse', '🎒', 'Ridge to Sea'],
+        ['contest', '🏆', 'Contestant'],
+        ['contest-win', '🥇', 'Champion'],
+        ['chef', '🍳', 'Camp Chef'],
+        ['good-dog', '🐕', 'Good Dog'],
+        ['rock-hound', '🦴', 'Rock Hound'],
+        ['treasure', '🪙', 'Treasure Hunter'],
+        ['seasons', '🍂', 'Four Seasons'],
+      ];
       const $ = (id) => document.getElementById(id);
       const number = (n) => n.toLocaleString('en-US');
 
+      // The counter allows about 30 requests every 10 seconds from one computer (abacus.jsn.cam;
+      // in practice a little fewer), so the page waits its turn: at most 20 reads in any 12.5
+      // seconds (leaving room for the game, if it's open on this computer too). If it still says
+      // "too many" (429), everything waits 5 seconds before trying again.
+      const LIMIT = 20;
+      const WINDOW = 12500;
+      const started = [];
+      let pauseUntil = 0;
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      async function turn() {
+        for (;;) {
+          const now = Date.now();
+          if (now < pauseUntil) {
+            await sleep(pauseUntil - now);
+            continue;
+          }
+          while (started.length && now - started[0] > WINDOW) started.shift();
+          if (started.length < LIMIT) {
+            started.push(now);
+            return;
+          }
+          await sleep(WINDOW - (now - started[0]) + 50);
+        }
+      }
       // A counter's number (a counter that hasn't been hit yet is 0). The counter is sometimes
-      // very slow, so each read gives up after 8 seconds and tries once more; null if it can't.
+      // very slow, so each read gives up after 8 seconds and tries again (three tries); null if
+      // it can't.
       async function read(key) {
-        for (let attempt = 0; attempt < 2; attempt++) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await turn();
           try {
             const res = await fetch(COUNTER + key, {
               cache: 'no-store',
@@ -311,6 +529,7 @@
             });
             if (res.status === 404) return 0;
             if (res.ok) return Number((await res.json()).value) || 0;
+            if (res.status === 429) pauseUntil = Math.max(pauseUntil, Date.now() + 5000);
           } catch {
             // (too slow, or couldn't connect: try again)
           }
@@ -337,18 +556,32 @@
       for (let i = DAYS - 1; i >= 0; i--) days.push(new Date(Date.now() - i * 86400000));
 
       async function show() {
-        const [hikers, plays, hikersToday, ...daily] = await readAll([
+        // First the main numbers and the chart (they come in straight away), then the rest
+        // (M38: about half a minute more, as the counter only allows a few reads at a time)
+        const values = await readAll([
           'get-out-the-door-hikers',
           'get-out-the-door-plays',
           `get-out-the-door-hikers-${dayKey(days[DAYS - 1])}`,
           ...days.map((d) => `get-out-the-door-plays-${dayKey(d)}`),
         ]);
+        const [hikers, plays, hikersToday] = values;
+        const daily = values.slice(3);
         $('hikers').textContent = shown(hikers);
         $('plays').textContent = shown(plays);
         $('today-plays').textContent = shown(daily[DAYS - 1]);
         $('today-note').textContent = `plays · ${shown(hikersToday)} new ${hikersToday === 1 ? 'hiker' : 'hikers'}`;
         const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        const missing = [hikers, plays, hikersToday, ...daily].filter((n) => n === null).length;
+        drawChart(daily);
+        $('status').textContent = 'Counting the rest… (it takes about half a minute: the counter only allows a few reads at a time)';
+        const MORE = ['trails-finished', 'fish-caught', 'animals-photographed', 'traverses-finished', 'plays-tracked', 'stayed-5min', 'stayed-30min', 'phones'];
+        const rest = await readAll([
+          ...MORE.map((k) => `get-out-the-door-${k}`),
+          ...PARKS.map(([id]) => `get-out-the-door-park-${id}`),
+          ...BADGES.map(([id]) => `get-out-the-door-badge-${id}`),
+        ]);
+        const more = Object.fromEntries(MORE.map((k, i) => [k, rest[i]]));
+        showMore(more, rest.slice(MORE.length, MORE.length + PARKS.length), rest.slice(MORE.length + PARKS.length));
+        const missing = [...values, ...rest].filter((n) => n === null).length;
         $('status').replaceChildren();
         if (missing) {
           const span = document.createElement('span');
@@ -358,7 +591,6 @@
         } else {
           $('status').textContent = `Updated ${time}.`;
         }
-        drawChart(daily);
       }
 
       function drawChart(daily) {
@@ -434,6 +666,99 @@
           row.append(c1, c2);
           table.prepend(row);
         });
+      }
+
+      // (M38) the numbers below the daily chart
+      function showMore(more, parks, badges) {
+        $('trails').textContent = shown(more['trails-finished']);
+        $('fish').textContent = shown(more['fish-caught']);
+        $('animals').textContent = shown(more['animals-photographed']);
+        $('traverses').textContent = shown(more['traverses-finished']);
+        const tracked = more['plays-tracked'];
+        $('tracked').textContent = shown(tracked);
+        const share = (n) => (n === null || !tracked ? '' : `${Math.round((n / tracked) * 100)}% of plays`);
+        for (const [id, key, words] of [
+          ['stayed5', 'stayed-5min', 'plays'],
+          ['stayed30', 'stayed-30min', 'plays'],
+          ['phones', 'phones', 'plays (the game needs a keyboard and mouse)'],
+        ]) {
+          $(id).textContent = shown(more[key]);
+          $(`${id}-note`).textContent = share(more[key]) ? `${share(more[key])}${id === 'phones' ? ' (the game needs a keyboard and mouse)' : ''}` : words;
+        }
+        const levels = Object.fromEntries(BADGES.map(([id], i) => [id, badges[i]]));
+        for (const id of ['level-5', 'level-10', 'level-20']) $(id).textContent = shown(levels[id]);
+        const parkTotal = parks.reduce((sum, n) => sum + (n ?? 0), 0);
+        drawBars(
+          $('parks'),
+          $('parks-table'),
+          PARKS.map(([, name], i) => ({ label: name, value: parks[i] })),
+          (n) => (n === 1 ? 'time loaded' : 'times loaded'),
+          (n) => (parkTotal && n !== null ? ` (${Math.round((n / parkTotal) * 100)}%)` : ''),
+        );
+        drawBars(
+          $('badges'),
+          $('badges-table'),
+          BADGES.map(([, icon, name], i) => ({ label: `${icon} ${name}`, value: badges[i] })),
+          (n) => (n === 1 ? 'player' : 'players'),
+          () => '',
+        );
+      }
+
+      // Bars across, most first: a label, the bar and its number, with a tip on hover (or focus)
+      // and the same numbers in a table
+      function drawBars(box, table, rows, words, extra) {
+        rows = [...rows].sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
+        const most = Math.max(1, ...rows.map((r) => r.value ?? 0));
+        const card = box.parentElement;
+        const tip = card.querySelector('.tip');
+        box.replaceChildren();
+        table.replaceChildren();
+        for (const r of rows) {
+          const row = document.createElement('div');
+          row.className = 'hrow';
+          row.tabIndex = 0;
+          row.setAttribute('aria-label', `${r.label}: ${shown(r.value)} ${words(r.value)}`);
+          const label = document.createElement('div');
+          label.className = 'hlabel';
+          label.textContent = r.label;
+          const track = document.createElement('div');
+          track.className = 'htrack';
+          const bar = document.createElement('div');
+          bar.className = 'hbar';
+          bar.style.width = r.value ? `max(3px, ${(r.value / most) * 100}%)` : '0';
+          track.append(bar);
+          const value = document.createElement('div');
+          value.className = 'hvalue';
+          value.textContent = shown(r.value);
+          row.append(label, track, value);
+          const showTip = () => {
+            tip.replaceChildren();
+            const strong = document.createElement('strong');
+            strong.textContent = shown(r.value);
+            tip.append(strong, document.createTextNode(` ${words(r.value)}${extra(r.value)} · ${r.label}`));
+            const a = track.getBoundingClientRect();
+            const b = card.getBoundingClientRect();
+            tip.style.display = 'block';
+            const half = tip.offsetWidth / 2;
+            const x = Math.min(Math.max(a.left + bar.offsetWidth - b.left, half + 4), b.width - half - 4);
+            tip.style.left = `${x}px`;
+            tip.style.top = `${a.top - b.top - 6}px`;
+          };
+          const hideTip = () => (tip.style.display = 'none');
+          row.addEventListener('pointerenter', showTip);
+          row.addEventListener('pointerleave', hideTip);
+          row.addEventListener('focus', showTip);
+          row.addEventListener('blur', hideTip);
+          box.append(row);
+          const tr = document.createElement('tr');
+          const c1 = document.createElement('td');
+          c1.textContent = r.label;
+          const c2 = document.createElement('td');
+          c2.className = 'n';
+          c2.textContent = shown(r.value);
+          tr.append(c1, c2);
+          table.append(tr);
+        }
       }
 
       show();
