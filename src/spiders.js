@@ -169,33 +169,56 @@ export function createSpiders({ scene, trails, groundHeight, isClear = () => tru
   // ---------- The tarantula (the desert) ----------
   let tarantula = null;
   if (hasTarantula) {
+    // (easy to make out at dusk: a light tan head, a fuzzy brown back with tufts of paler hair,
+    // and orange bands at its knees, like a desert blonde tarantula)
     const body = new THREE.Group();
-    const brown = new THREE.MeshStandardMaterial({ color: 0x4a3426, flatShading: true });
-    const leggy = new THREE.MeshStandardMaterial({ color: 0x5e4535, flatShading: true });
+    const look = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+    const tan = look(0xc29a6b);
+    const brown = look(0x8a6142);
+    const hair = look(0xd8b98c);
+    const leggy = look(0x9a7350);
+    const orange = look(0xe8893a);
     const abdomen = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), brown);
     abdomen.scale.set(1, 0.8, 1.2);
     abdomen.position.set(0, 0.06, 0.06);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), brown);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), tan);
     head.scale.set(1, 0.7, 1.1);
     head.position.set(0, 0.05, -0.02);
     body.add(abdomen, head);
+    // Tufts of hair all over its back (little cones pointing outward)
+    for (let i = 0; i < 18; i++) {
+      const up = 0.25 + (i % 6) * 0.22; // (from its sides up over the top)
+      const round = (i / 18) * Math.PI * 2 * 3.1;
+      const out = new THREE.Vector3(Math.sin(up) * Math.cos(round), Math.cos(up), Math.sin(up) * Math.sin(round));
+      const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.03, 4), hair);
+      tuft.position.set(abdomen.position.x + out.x * 0.05, abdomen.position.y + out.y * 0.04, abdomen.position.z + out.z * 0.06);
+      tuft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), out);
+      body.add(tuft);
+    }
     const legs = [];
     for (const side of [-1, 1]) {
       for (let k = 0; k < 4; k++) {
         const hip = new THREE.Group();
         hip.position.set(side * 0.025, 0.05, -0.04 + k * 0.022);
-        hip.rotation.y = side * (Math.PI / 2) + side * (k - 1.5) * -0.45;
-        const upper = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.07), leggy);
-        upper.position.set(0, 0.015, -0.03);
+        // (out to its own side: the front pair reaching forward, the back pair back)
+        hip.rotation.y = -side * (Math.PI / 2) + side * (1.5 - k) * 0.45;
+        // (long legs, like a real tarantula's: up to the knee, then down to the ground)
+        const upper = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.016, 0.09), leggy);
+        upper.position.set(0, 0.0216, -0.0395);
         upper.rotation.x = 0.5;
-        const lower = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.07), leggy);
-        lower.position.set(0, -0.005, -0.075);
-        lower.rotation.x = -0.75;
-        hip.add(upper, lower);
+        const knee = new THREE.Mesh(new THREE.BoxGeometry(0.021, 0.021, 0.02), orange);
+        knee.position.set(0, 0.043, -0.079);
+        const lower = new THREE.Mesh(new THREE.BoxGeometry(0.013, 0.013, 0.1), leggy);
+        lower.position.set(0, -0.0034, -0.0975);
+        lower.rotation.x = -1.19;
+        hip.add(upper, knee, lower);
+        mergeStill(hip);
         body.add(hip);
         legs.push({ hip, side, k, rest: hip.rotation.y });
       }
     }
+    mergeStill(body, legs.map((leg) => leg.hip));
+    body.scale.setScalar(1.3); // (a third bigger than it was)
     body.visible = false;
     group.add(body);
     // (somewhere near the trailhead, on open ground)
@@ -299,7 +322,7 @@ export function createSpiders({ scene, trails, groundHeight, isClear = () => tru
     things() {
       const list = [];
       for (const web of all) if (web.unit.visible) list.push({ id: 'orb-weaver', object: web.spider, size: 0.12, near: 4 });
-      if (tarantula?.group.visible) list.push({ id: 'tarantula', object: tarantula.group, size: 0.18, near: 5 });
+      if (tarantula?.group.visible) list.push({ id: 'tarantula', object: tarantula.group, size: 0.23, near: 5 });
       return list;
     },
   };

@@ -1993,7 +1993,10 @@ function openChest(which) {
 document.getElementById('backpack-close').addEventListener('click', toggleBackpack);
 document.getElementById('cooking-close').addEventListener('click', () => cooking.close());
 
-// Off to another park (by shuttle or RV): save, fade out, and load the new park
+// Off to another park (by shuttle, RV, water taxi or over the pass): save, show the travel screen,
+// and load the new park. (M37: the travel screen is the loading screen, with the park you're going
+// to and how: the bus, your RV, the boat or a hiker going round the ring. index.html picks the trip
+// up again after the reload, so it carries on until the new park's ready.)
 async function goToPark(id, how = 'shuttle') {
   const park = PARKS[id];
   if (riding) getOff();
@@ -2001,14 +2004,33 @@ async function goToPark(id, how = 'shuttle') {
   travel.close();
   save();
   state.sleeping = true;
-  fade.classList.add('show');
   // (Bluewater Lake is on an island: the last bit is on the car ferry)
   const ferryRide = park.landings ? ', then over on the car ferry' : '';
-  if (how === 'rv') showToast(`🚐 Road trip! Driving to ${park.emoji} ${park.name}${ferryRide}…`);
-  else if (how === 'taxi') showToast(`⛴ The water taxi takes you across the lake, then the shuttle bus on to ${park.emoji} ${park.name}…`);
-  else if (how === 'traverse') showToast(`🥾 Over the pass and down into ${park.emoji} ${park.name}…`);
-  else showToast(`🚌 The shuttle bus takes you to ${park.emoji} ${park.name}${ferryRide}…`);
-  await wait(1.2);
+  const ride = ['rv', 'taxi', 'traverse'].includes(how) ? how : 'shuttle';
+  const trip = {
+    how: ride,
+    title: `${park.emoji} ${park.name}`,
+    note: {
+      shuttle: `🚌 Riding the shuttle bus there${ferryRide}…`,
+      rv: `🚐 Road trip! Driving your RV there${ferryRide}…`,
+      taxi: '⛴ Across the lake on the water taxi, then on by shuttle bus…',
+      traverse: '🥾 Over the pass and down the other side…',
+    }[ride],
+  };
+  try {
+    sessionStorage.setItem('gotd-trip', JSON.stringify(trip));
+  } catch {
+    // (storage blocked: the new park just says it's loading)
+  }
+  const screen = document.getElementById('loading-screen');
+  screen.dataset.how = trip.how;
+  document.getElementById('loading-title').textContent = trip.title;
+  document.getElementById('loading-note').textContent = trip.note;
+  screen.querySelector('.loading-orbit').style.animationDelay = `-${(Date.now() % 3600) / 1000}s`;
+  screen.classList.remove('gone');
+  screen.getBoundingClientRect(); // (so it fades in, rather than just appearing)
+  screen.classList.remove('done');
+  await wait(1.6);
   travelTo(id);
 }
 
@@ -4313,15 +4335,16 @@ if (!TESTING) {
   window.addEventListener('keydown', carryOn, true);
 }
 
-// ---------- The loading screen (M35) ----------
+// ---------- The loading screen (M35, M37) ----------
 // Up since the page opened (index.html). The park's built now: once its first frame is drawn
-// (so there's no pause behind it), the loading screen fades away. (Straight away in a ?test window.)
+// (so there's no pause behind it), it fades away, then stays out of the way until you next change
+// parks (goToPark shows it again as the travel screen). (Straight away in a ?test window.)
 const loadingScreen = document.getElementById('loading-screen');
-if (loadingScreen) {
-  const fadeAway = () => {
-    loadingScreen.classList.add('done');
-    setTimeout(() => loadingScreen.remove(), 600);
-  };
-  if (TESTING) loadingScreen.remove();
-  else requestAnimationFrame(() => requestAnimationFrame(fadeAway));
+function hideLoadingScreen() {
+  loadingScreen.classList.add('done');
+  setTimeout(() => {
+    if (loadingScreen.classList.contains('done')) loadingScreen.classList.add('gone');
+  }, 600);
 }
+if (TESTING) loadingScreen.classList.add('done', 'gone');
+else requestAnimationFrame(() => requestAnimationFrame(hideLoadingScreen));

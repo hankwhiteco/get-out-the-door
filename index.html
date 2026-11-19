@@ -9,26 +9,100 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- The loading screen (M35): up from the moment the page opens, while the game downloads and
-         builds the park. main.js fades it away once the park's ready. -->
-    <div id="loading-screen">
+    <!-- The loading screen (M35, M37): up from the moment the page opens, while the game downloads
+         and builds the park. A little camper drives round and round a ring road around the logo.
+         It's also the travel screen when you change parks (data-how: shuttle, rv, taxi or
+         traverse), and carries on through the reload into the new park. main.js fades it away
+         once the park's ready. -->
+    <div id="loading-screen" data-how="rv">
       <div class="loading-box">
-        <img class="title-logo" src="/icon.svg" alt="" />
-        <h1>Get Out the Door</h1>
-        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <div class="loading-ring">
+          <svg class="loading-road" viewBox="0 0 200 200" aria-hidden="true">
+            <circle class="road" cx="100" cy="100" r="78" />
+            <circle class="road-line" cx="100" cy="100" r="78" />
+          </svg>
+          <img class="loading-logo" src="/icon.svg" alt="" />
+          <div class="loading-orbit">
+            <!-- Your RV (facing the way it drives: clockwise, so right along the top) -->
+            <svg class="loading-ride ride-rv" viewBox="0 0 48 28" aria-hidden="true">
+              <rect x="2" y="3" width="36" height="19" rx="3" fill="#f4ead2" />
+              <path d="M36 9 H41 L46 15 V20 Q46 22 44 22 H36 Z" fill="#f4ead2" />
+              <path d="M40.5 10.5 L44.8 15.5 H40.5 Z" fill="#8fc3e6" />
+              <rect x="2" y="15.5" width="44" height="2.6" fill="#6f9e4c" />
+              <rect x="6" y="6.5" width="7" height="5.5" rx="1" fill="#8fc3e6" />
+              <rect x="16" y="6.5" width="7" height="5.5" rx="1" fill="#8fc3e6" />
+              <rect x="27" y="6.5" width="5" height="13" rx="1" fill="#e2d2ae" />
+              <circle cx="11" cy="23.5" r="4.2" fill="#2b2b2b" /><circle cx="11" cy="23.5" r="1.6" fill="#a0a0a0" />
+              <circle cx="38" cy="23.5" r="4.2" fill="#2b2b2b" /><circle cx="38" cy="23.5" r="1.6" fill="#a0a0a0" />
+            </svg>
+            <!-- The park shuttle bus -->
+            <svg class="loading-ride ride-shuttle" viewBox="0 0 48 28" aria-hidden="true">
+              <rect x="2" y="4" width="44" height="18" rx="4" fill="#f2c037" />
+              <path d="M37 7 H43 Q45 7 45 9 V15 H37 Z" fill="#8fc3e6" />
+              <rect x="6" y="7" width="5.5" height="6" rx="1" fill="#8fc3e6" />
+              <rect x="13.5" y="7" width="5.5" height="6" rx="1" fill="#8fc3e6" />
+              <rect x="21" y="7" width="5.5" height="6" rx="1" fill="#8fc3e6" />
+              <rect x="30" y="7" width="4.5" height="13" rx="1" fill="#d9a520" />
+              <rect x="2" y="16" width="28" height="2" fill="#6f9e4c" />
+              <circle cx="11" cy="23.5" r="4.2" fill="#2b2b2b" /><circle cx="11" cy="23.5" r="1.6" fill="#a0a0a0" />
+              <circle cx="38" cy="23.5" r="4.2" fill="#2b2b2b" /><circle cx="38" cy="23.5" r="1.6" fill="#a0a0a0" />
+            </svg>
+            <!-- The water taxi -->
+            <svg class="loading-ride ride-taxi" viewBox="0 0 48 28" aria-hidden="true">
+              <rect x="12" y="4.5" width="24" height="2.6" rx="1" fill="#d9534f" />
+              <rect x="14" y="6.5" width="20" height="9" rx="2" fill="#f6f3ea" />
+              <rect x="16.5" y="8.5" width="4.5" height="4" rx="0.8" fill="#8fc3e6" />
+              <rect x="22" y="8.5" width="4.5" height="4" rx="0.8" fill="#8fc3e6" />
+              <rect x="27.5" y="8.5" width="4.5" height="4" rx="0.8" fill="#8fc3e6" />
+              <path d="M2 15 H47 L42 24 H6 Q3 24 2 21 Z" fill="#f6f3ea" />
+              <path d="M2.4 18.6 H45.3 L44.5 20.3 H3 Z" fill="#d9534f" />
+            </svg>
+            <!-- A hiker with a backpack and a walking pole (the traverse) -->
+            <svg class="loading-ride ride-traverse" viewBox="0 0 20 30" aria-hidden="true">
+              <line x1="10" y1="18" x2="6.5" y2="28" stroke="#4a3a2a" stroke-width="2.6" stroke-linecap="round" />
+              <line x1="12" y1="18" x2="15" y2="28" stroke="#4a3a2a" stroke-width="2.6" stroke-linecap="round" />
+              <rect x="3" y="8" width="5.8" height="10.5" rx="1.8" fill="#e07a3a" />
+              <rect x="8" y="8" width="6" height="10.5" rx="2" fill="#3f7fd0" />
+              <line x1="17.5" y1="14.5" x2="19" y2="28.5" stroke="#bbbbbb" stroke-width="1" />
+              <line x1="13" y1="10" x2="17.5" y2="15.5" stroke="#f0c9a0" stroke-width="2" stroke-linecap="round" />
+              <circle cx="11" cy="4.8" r="3.2" fill="#f0c9a0" />
+              <path d="M7.6 4 Q11 -0.4 14.4 4 Z" fill="#6f9e4c" />
+              <rect x="6.6" y="3.3" width="9" height="1.3" rx="0.6" fill="#4d7a34" />
+            </svg>
+          </div>
+        </div>
+        <h1 id="loading-title">Get Out the Door</h1>
         <p id="loading-note">Loading the park…</p>
       </div>
     </div>
     <script>
+      // Changing parks (main.js goToPark): the travel screen carries on here, as it was, while the
+      // new park loads. (And the camper keeps going round from where it was: its place on the ring
+      // comes from the clock.)
+      (() => {
+        const screen = document.getElementById('loading-screen');
+        try {
+          const trip = JSON.parse(sessionStorage.getItem('gotd-trip') || 'null');
+          sessionStorage.removeItem('gotd-trip');
+          if (trip) {
+            screen.dataset.how = trip.how;
+            document.getElementById('loading-title').textContent = trip.title;
+            document.getElementById('loading-note').textContent = trip.note;
+          }
+        } catch {
+          // (storage blocked: just the usual loading screen)
+        }
+        screen.querySelector('.loading-orbit').style.animationDelay = `-${(Date.now() % 3600) / 1000}s`;
+      })();
       // (if the game can't start, the loading screen says so rather than loading forever)
       window.addEventListener(
         'error',
         (e) => {
           if (e.target !== window && e.target?.tagName !== 'SCRIPT') return; // (not just a missing picture)
-          const note = document.getElementById('loading-note');
-          if (!note || !document.getElementById('loading-screen')) return;
-          note.textContent = 'Something went wrong while loading. Try reloading the page.';
-          document.getElementById('loading-screen').classList.add('stuck');
+          const screen = document.getElementById('loading-screen');
+          if (!screen || screen.classList.contains('done')) return; // (the game's going: not a loading problem)
+          document.getElementById('loading-note').textContent = 'Something went wrong while loading. Try reloading the page.';
+          screen.classList.add('stuck');
         },
         true,
       );
