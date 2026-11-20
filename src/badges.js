@@ -21,6 +21,9 @@ const ALL_TRAILS = Object.values(PARKS)
   .filter((trail) => !trail.traverse)
   .map((trail) => trail.id);
 
+// Every ATV track in every park (M42)
+const ALL_TRACKS = Object.values(PARKS).flatMap((park) => (park.atvTracks ?? []).map((track) => track.id));
+
 // Each badge: what it's for, and `count(s)`: how far along you are (it's earned at `need`).
 // `s` is everything it needs to know (see stats below).
 export const BADGES = [
@@ -48,6 +51,9 @@ export const BADGES = [
   { id: 'level-20', icon: '🏔️', name: 'Mountain Legend', about: 'Reach level 20', need: 20, count: (s) => s.level },
   // The traverse
   { id: 'traverse', icon: '🎒', name: 'Ridge to Sea', about: 'Finish the three-day Ridge to Sea Traverse', need: 1, count: (s) => s.traverse },
+  // The ATV tracks (M42)
+  { id: 'dirt-rider', icon: '🏍️', name: 'Dirt Rider', about: 'Ride a lap of an ATV track', need: 1, count: (s) => s.laps },
+  { id: 'laps-all', icon: '🏁', name: 'Checkered Flag', about: `Ride a lap of every ATV track (all ${ALL_TRACKS.length})`, need: ALL_TRACKS.length, count: (s) => s.laps },
   // The fishing contest (with friends)
   { id: 'contest', icon: '🏆', name: 'Contestant', about: 'Fish in a fishing contest with friends', need: 1, count: (s) => s.contests },
   { id: 'contest-win', icon: '🥇', name: 'Champion', about: 'Win a fishing contest', need: 1, count: (s) => s.wins },
@@ -77,7 +83,10 @@ function stats({ pack, completed, parks, found }) {
     wins: (pack.contests ?? []).filter((c) => c.place === 1).length,
     recipes: RECIPES.filter((r) => pack.recipes?.[r.id]).length,
     dogFinds: pack.dog?.found?.length ?? 0,
-    finds: (pack.finds ?? []).length,
+    // (only the desert's rock art and fossils: the finds list has ATV laps, islands and more in it
+    // too, M42)
+    finds: (pack.finds ?? []).filter((f) => /^(rockart|fossil)-/.test(f.id)).length,
+    laps: ALL_TRACKS.filter((id) => pack.laps?.[id] !== undefined).length,
     treasures: (pack.treasures ?? []).length,
     seasons: SEASON_IDS.filter((season) => Object.keys(PARKS).some((park) => found[seasonSightId(park, season)])).length,
   };

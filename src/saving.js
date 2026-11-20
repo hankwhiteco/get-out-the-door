@@ -20,6 +20,10 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
   let ready = false;
   let sinceSave = 0;
   let parkSaves = {}; // what each park remembers, by park id
+  // Which hiker this is: a random id, made once and kept in the save, so each hiker's copy on
+  // this computer goes in a folder of its own (M42: see vite.config.js)
+  let hiker = null;
+  const newHiker = () => Array.from({ length: 10 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
   let savedVehicles = null; // (the valley's vehicles, kept safe while you're in another park)
   const saveStatus = document.getElementById('save-status');
 
@@ -66,6 +70,7 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
       vehicles: park.valleyFeatures ? undefined : vehiclePositions(),
     };
     return {
+      hiker: (hiker ??= newHiker()),
       parks: parkSaves,
       savedAt: Date.now(),
       completed: [...completed],
@@ -105,6 +110,7 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
 
   // Put a saved game back the way it was. Returns true if you've been to this park before.
   function restore(data) {
+    hiker = typeof data.hiker === 'string' ? data.hiker : null; // (an older save gets one when it's next saved)
     for (const id of data.completed ?? []) completed.add(id);
     Object.assign(photo.found, data.found ?? {});
     photo.otherPhotos.push(...(data.otherPhotos ?? []));

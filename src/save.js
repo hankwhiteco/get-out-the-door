@@ -73,8 +73,9 @@ export function saveGame(data) {
 
 // ---------- A copy on this computer (while developing: see vite.config.js) ----------
 // A browser's storage can get wiped, so while you play from `npm run dev`, a copy of your save
-// goes to the saves/ folder too (at most every 30 seconds). If the browser then starts with no
-// save at all, the game gets it back from there.
+// goes to the saves/ folder too (at most every 30 seconds), in your hiker's own folder (M42). If
+// the browser then starts with no save at all, the game gets one back from there (the one with
+// the most XP).
 const ON_DISK = import.meta.env.DEV && !TESTING;
 let copiedAt = 0;
 function copyToDisk(data) {
