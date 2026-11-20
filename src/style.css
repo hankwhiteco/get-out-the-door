@@ -784,6 +784,7 @@ body.photo-mode #toolbar {
 }
 
 #settings-button,
+#say-hi-button,
 #reset-progress {
   font: 13px system-ui, sans-serif;
   padding: 5px 12px;
