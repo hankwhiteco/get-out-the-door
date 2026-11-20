@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PARK } from './park.js';
 import { mergeStill } from './merge.js';
-import { standOnGround } from './ground.js';
+import { standOnGround, angleTo, openWay } from './ground.js';
 
 // ---------- Deer ----------
 // Deer wander around their home spot, stop to graze, and run away if you get too
@@ -160,6 +160,7 @@ export function createWildlife({ scene, groundHeight, waterDepth, isGoodGround, 
       position: new THREE.Vector3(),
       target: new THREE.Vector3(),
       heading: 0,
+      detour: 0, // (M41: when it last had to find a way round something)
       speed: 0,
       stride: 0,
       state: 'graze', // graze, walk, alert, flee, down, gone
@@ -334,14 +335,12 @@ export function createWildlife({ scene, groundHeight, waterDepth, isGoodGround, 
     }
     if (deer.state === 'walk' || deer.state === 'flee') {
       const want = Math.atan2(deer.target.x - deer.position.x, deer.target.z - deer.position.z);
-      // Turn smoothly toward where it wants to go
-      let diff = ((want - deer.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-      deer.heading += diff * Math.min(1, dt * 4);
+      // Turn smoothly toward where it wants to go (the short way round)
+      deer.heading += angleTo(deer.heading, want) * Math.min(1, dt * 4);
     } else if (deer.state === 'alert') {
       // Look toward you
       const want = Math.atan2(player.x - deer.position.x, player.z - deer.position.z);
-      let diff = ((want - deer.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-      deer.heading += diff * Math.min(1, dt * 3);
+      deer.heading += angleTo(deer.heading, want) * Math.min(1, dt * 3);
     }
     deer.speed += (wantedSpeed - deer.speed) * Math.min(1, dt * 3);
 
@@ -352,10 +351,27 @@ export function createWildlife({ scene, groundHeight, waterDepth, isGoodGround, 
       deer.position.x = nx;
       deer.position.z = nz;
     } else {
-      // Blocked (water, snow, the edge…): pick somewhere else
-      deer.target.copy(deer.home);
-      if (deer.state === 'flee') deer.heading += Math.PI / 2;
+      // Blocked (water, snow, the edge…): it stops, picks the best open way to go (away from you
+      // if it's running off, otherwise toward where it was going) and turns there. Only once a
+      // second: M41, it used to turn a quarter of the way round every frame, and spin.
+      deer.speed = Math.min(deer.speed, 1.5);
+      if (deer.state === 'walk' || deer.state === 'flee') {
+        if (deer.detour <= 0) {
+          const fleeing = deer.state === 'flee';
+          const want = fleeing ? Math.atan2(deer.position.x - player.x, deer.position.z - player.z) : Math.atan2(deer.target.x - deer.position.x, deer.target.z - deer.position.z);
+          const a = openWay(deer.position.x, deer.position.z, isGoodGround, (a) => Math.cos(a - want));
+          if (a === null) {
+            deer.state = 'graze'; // (boxed in: it stays put for now)
+            deer.timer = 2 + Math.random() * 3;
+          } else {
+            const far = fleeing ? 25 : 10;
+            deer.target.set(deer.position.x + Math.sin(a) * far, 0, deer.position.z + Math.cos(a) * far);
+          }
+          deer.detour = 1;
+        }
+      }
     }
+    deer.detour -= dt;
 
     // Place the model and animate it
     standOnGround(deer.group, deer.position.x, deer.position.z, deer.heading, 0.96, 0.34, groundHeight); // (on all four hooves, on a slope too: M30)

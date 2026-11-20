@@ -59,7 +59,7 @@ export const BREEDS = {
     name: 'Dachshund', short: 'dachshund', icon: '🌭',
     coat: 0x8f4b22, light: 0xa8653a, nose: 0x1a120d, legColor: null, paws: null, earColor: 0x6e3616,
     leg: 0.12, length: 0.78, height: 0.22, width: 0.2, head: 0.19, snout: 0.18,
-    ears: 'long', tail: 'thin', tailRest: -0.25, tailHappy: 0.25, top: 5.5, pitch: 1.5,
+    ears: 'long', tail: 'thin', tailRest: -0.25, tailHappy: 0.25, top: 5.5, pitch: 1.2, // (a dachshund has a big bark for its size)
     about: 'Short legs, long body, big heart. A brave little digger!',
   },
   // (four more, added during M28)

@@ -572,11 +572,13 @@ export function createAudio() {
 
 // ---------- A dog's bark ----------
 // A real bark is a rough, breathy voice: the vocal folds snap shut once a cycle (a buzz with a
-// sharp edge), every other cycle a little weaker (that's the growl), with puffs of breath through
-// it. Its pitch jumps up and falls away in a fraction of a second, and the mouth shapes it,
-// opening from "w" to "oo-aa" and closing again. So each bark is made sample by sample (a few
-// "takes" for each size of dog, so no two in a row are quite alike), then sent through the
-// mouth: three resonances that open and close, and a little roughness.
+// sharp edge), unevenly (that's the growl: a bark is harsh, not a clean note), with puffs of
+// breath through it. Its pitch jumps up and falls away in a fraction of a second, and the mouth
+// shapes it: already open as it starts ("arf!"), then closing. (M41: it used to open from a
+// closed "w" into a clean "aa", which on a little dog came out as a lamb's "baa".) So each bark
+// is made sample by sample (a few "takes" for each size of dog, so no two in a row are quite
+// alike), then sent through the mouth: three resonances that open and close, and a little
+// roughness. A hound's bay is a long, smooth "a-roooo" (no fast shake: that's a bleat too).
 const barkTakes = new Map();
 function barkBuffer(ctx, pitch, bay, take) {
   const key = `${pitch.toFixed(2)} ${bay} ${take}`;
@@ -584,7 +586,7 @@ function barkBuffer(ctx, pitch, bay, take) {
   let seed = 1 + take * 7919 + Math.round(pitch * 100);
   const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
   const rate = ctx.sampleRate;
-  const seconds = bay ? 0.75 : 0.08 + 0.13 / pitch; // (a big dog's woof is longer than a little yap)
+  const seconds = bay ? 0.85 : 0.06 + 0.12 / pitch; // (a big dog's woof is longer than a little yap)
   const n = Math.floor(rate * seconds);
   const buffer = ctx.createBuffer(1, n, rate);
   const data = buffer.getChannelData(0);
@@ -592,32 +594,34 @@ function barkBuffer(ctx, pitch, bay, take) {
   let phase = 0;
   let strength = 1;
   let wobble = 1;
-  let cycle = 0;
   let previous = 0;
   let peak = 0;
   for (let i = 0; i < n; i++) {
     const t = i / rate;
     const k = t / seconds;
-    // The pitch: up fast, then falling away (a bay rises, holds and wavers, and sinks at the end)
+    // The pitch: up fast, then falling away (a bay rises, holds with one slow swell, and slides
+    // down at the end)
     let f;
-    if (bay) f = f0 * (0.8 + 0.4 * Math.min(1, k * 8) - 0.25 * Math.max(0, k - 0.6) + 0.035 * Math.sin(t * Math.PI * 2 * 6.5));
-    else f = f0 * (k < 0.2 ? 0.78 + (k / 0.2) * 0.5 : 1.28 - ((k - 0.2) / 0.8) * 0.6);
+    if (bay) f = f0 * (0.8 + 0.4 * Math.min(1, k * 8) + 0.04 * Math.sin(Math.PI * k) - 0.35 * Math.max(0, (k - 0.7) / 0.3) ** 2);
+    else f = f0 * (k < 0.1 ? 0.85 + (k / 0.1) * 0.4 : 1.25 - ((k - 0.1) / 0.9) * 0.55);
     phase += (f * wobble) / rate;
     if (phase >= 1) {
       phase -= 1;
-      cycle++;
-      strength = (cycle % 2 ? 0.72 : 1) * (0.85 + random() * 0.3); // (the growl: uneven cycles)
-      wobble = 1 + (random() - 0.5) * 0.08; // (and a little jitter in the pitch)
+      // (the growl: uneven cycles, and jitter in the pitch; a bay's long note is smooth)
+      const rough = bay ? (k < 0.15 ? 1 : 0.25) : k < 0.6 ? 1.6 : 1;
+      strength = 1 - rough * 0.2 + (random() - 0.5) * rough * 0.4;
+      wobble = 1 + (random() - 0.5) * 0.08 * rough;
     }
     // The vocal folds: open slowly, snap shut, stay shut a moment (what you hear is how fast the
     // air changes: mostly that snap)
     const open = phase < 0.42 ? 0.5 - 0.5 * Math.cos((Math.PI * phase) / 0.42) : phase < 0.6 ? Math.cos(((phase - 0.42) / 0.18) * (Math.PI / 2)) : 0;
     const voiced = (open - previous) * strength;
     previous = open;
-    // Breath: a puff at the start (the "w"), and through the open part of each cycle
-    const breath = (random() * 2 - 1) * (0.05 + 0.12 * open) * (k < 0.08 ? 2.2 : 1);
+    // Breath: a burst at the start, through the open part of each cycle, and a huff at the end
+    // as the mouth closes (a bark is breathy; a bay much less so)
+    const breath = bay ? (random() * 2 - 1) * (0.04 + 0.08 * open) * (k < 0.08 ? 2 : 1) : (random() * 2 - 1) * (0.07 + 0.2 * open) * (k < 0.06 ? 2.5 : 1 + 1.5 * Math.max(0, (k - 0.7) / 0.3));
     // How loud: a sharp start, a quick peak, and falling away
-    const loud = bay ? (k < 0.05 ? k / 0.05 : k < 0.75 ? 1 - 0.3 * ((k - 0.05) / 0.7) : 0.7 * Math.pow(1 - (k - 0.75) / 0.25, 1.5)) : k < 0.04 ? k / 0.04 : Math.pow(1 - (k - 0.04) / 0.96, 1.7);
+    const loud = bay ? (k < 0.05 ? k / 0.05 : k < 0.75 ? 1 - 0.3 * ((k - 0.05) / 0.7) : 0.7 * Math.pow(1 - (k - 0.75) / 0.25, 1.5)) : k < 0.03 ? k / 0.03 : Math.pow(1 - (k - 0.03) / 0.97, 2);
     const sample = (voiced * (rate / f0) * 0.25 + breath) * loud;
     data[i] = sample;
     peak = Math.max(peak, Math.abs(sample));
@@ -634,18 +638,25 @@ export function playBark(ctx, destination, { pan = 0, volume = 0.08, pitch = 1, 
   source.buffer = barkBuffer(ctx, pitch, bay, Math.floor(Math.random() * 3));
   source.playbackRate.value = 0.97 + Math.random() * 0.06;
   const seconds = source.buffer.duration;
-  // The mouth: three resonances (a bigger dog has a longer mouth and throat, so lower ones),
-  // opening up through the bark and closing at the end
+  // The mouth: three resonances (a bigger dog has a longer mouth and throat, so lower ones).
+  // A bark starts with the mouth already open (a little dog's nearly all the way: a yap; a big
+  // dog's still has a bit of "w": a woof), opens wide at once and closes at the end. A bay opens,
+  // then rounds to a long "oo".
   const size = Math.sqrt(pitch);
+  const start = bay ? 0.5 : Math.min(0.85, Math.max(0.3, (pitch - 0.6) * 0.8)); // (how open at first)
   const mix = ctx.createGain();
   mix.gain.value = 1;
-  for (const [low, high, q, gain] of [[500, 850, 4, 1.0], [1300, 1650, 5, 0.7], [2600, 2900, 6, 0.35]]) {
+  for (const [low, high, q0, gain] of [[500, 850, 4, 1.0], [1300, 1650, 5, 0.7], [2600, 2900, 6, 0.35]]) {
+    const q = bay ? q0 : q0 * 0.75; // (a bark's mouth is less of a clean vowel)
+    const shut = low * size;
+    const wide = high * size;
     const formant = ctx.createBiquadFilter();
     formant.type = 'bandpass';
     formant.Q.value = q;
-    formant.frequency.setValueAtTime(low * size, t);
-    formant.frequency.linearRampToValueAtTime(high * size, t + seconds * 0.25);
-    formant.frequency.linearRampToValueAtTime(((low + high) / 2) * size, t + seconds);
+    formant.frequency.setValueAtTime(shut + (wide - shut) * start, t);
+    formant.frequency.linearRampToValueAtTime(wide, t + seconds * (bay ? 0.15 : 0.1));
+    if (bay) formant.frequency.linearRampToValueAtTime(shut + (wide - shut) * 0.15, t + seconds * 0.5);
+    formant.frequency.linearRampToValueAtTime(shut + (wide - shut) * (bay ? 0 : 0.25), t + seconds);
     const level = ctx.createGain();
     level.gain.value = gain * q * 0.8;
     source.connect(formant).connect(level).connect(mix);
@@ -675,7 +686,7 @@ export function playBark(ctx, destination, { pan = 0, volume = 0.08, pitch = 1, 
   const rough = ctx.createWaveShaper();
   rough.curve = roughCurve;
   const out = ctx.createGain();
-  out.gain.value = volume * 2.2;
+  out.gain.value = volume * (bay ? 2.2 : 2.9); // (a bark is short and punchy, so it gets a little more)
   const panner = ctx.createStereoPanner();
   panner.pan.value = pan;
   mix.connect(soft).connect(clear).connect(rough).connect(out).connect(panner).connect(destination);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PARK } from './park.js';
 import { mergeStill } from './merge.js';
 import { LAKES } from './water.js';
+import { angleTo } from './ground.js';
 
 // ---------- Birds (M26) ----------
 // Every park has birds, and each park has the ones that fit it:
@@ -545,8 +546,7 @@ export function createBirds({ scene, camera, groundHeight, waterDepth, sky, audi
       family.timer = random(8, 20);
     }
     const want = Math.atan2(family.target.x - family.position.x, family.target.z - family.position.z);
-    const diff = ((want - family.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-    family.heading += diff * Math.min(1, dt * 2);
+    family.heading += angleTo(family.heading, want) * Math.min(1, dt * 2); // (the short way round: M41)
     family.speed += (wanted - family.speed) * Math.min(1, dt * 2);
     const nx = family.position.x + Math.sin(family.heading) * family.speed * dt;
     const nz = family.position.z + Math.cos(family.heading) * family.speed * dt;

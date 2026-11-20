@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PARK } from './park.js';
 import { mergeStill } from './merge.js';
-import { standOnGround, restOnGround } from './ground.js';
+import { standOnGround, restOnGround, angleTo, openWay } from './ground.js';
 
 // ---------- More animals (M26) ----------
 // Bears, foxes, coyotes and seals (the birds are in birds.js).
@@ -457,8 +457,7 @@ export function createAnimals({ scene, camera, groundHeight, waterDepth = () => 
   }
 
   const turnToward = (bear, angle, rate, dt) => {
-    const diff = ((angle - bear.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-    bear.heading += diff * Math.min(1, dt * rate);
+    bear.heading += angleTo(bear.heading, angle) * Math.min(1, dt * rate); // (the short way round)
   };
 
   function updateBear(bear, dt, player) {
@@ -510,13 +509,17 @@ export function createAnimals({ scene, camera, groundHeight, waterDepth = () => 
     if (isGoodGround(nx, nz)) {
       bear.position.x = nx;
       bear.position.z = nz;
-    } else {
-      // Blocked (water, a steep slope, the edge): head off another way
-      const a = bear.heading + (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 + Math.random() * 0.8);
-      bear.heading = a;
-      if (bear.state === 'amble') bear.from = new THREE.Vector3(bear.position.x - Math.sin(a) * 10, 0, bear.position.z - Math.cos(a) * 10);
-      else if (bear.state === 'wander') bear.target.set(bear.position.x + Math.sin(a) * 15, 0, bear.position.z + Math.cos(a) * 15);
+    } else if ((bear.state === 'amble' || bear.state === 'wander') && !(bear.detour > 0)) {
+      // Blocked (water, a steep slope, the edge): it picks the best open way to go (away from
+      // whatever it's leaving, or toward where it was going) and turns there. Only once a second:
+      // M41, it used to pick a new way every frame, and spin round on the spot.
+      const want = bear.state === 'amble' ? Math.atan2(bear.position.x - bear.from.x, bear.position.z - bear.from.z) : Math.atan2(bear.target.x - bear.position.x, bear.target.z - bear.position.z);
+      const a = openWay(bear.position.x, bear.position.z, isGoodGround, (a) => Math.cos(a - want));
+      if (a !== null && bear.state === 'amble') bear.from = new THREE.Vector3(bear.position.x - Math.sin(a) * 10, 0, bear.position.z - Math.cos(a) * 10);
+      else if (a !== null) bear.target.set(bear.position.x + Math.sin(a) * 15, 0, bear.position.z + Math.cos(a) * 15);
+      bear.detour = 1; // (boxed in: it stays put)
     }
+    bear.detour = (bear.detour ?? 0) - dt;
     place(bear);
 
     // Standing up for a look, and the legs, head and digging
@@ -568,8 +571,7 @@ export function createAnimals({ scene, camera, groundHeight, waterDepth = () => 
     if (c.state === 'trot' || c.state === 'flee') {
       wanted = c.state === 'flee' ? 6 : c.kind.trot;
       const want = Math.atan2(c.target.x - c.position.x, c.target.z - c.position.z);
-      const diff = ((want - c.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-      c.heading += diff * Math.min(1, dt * 4);
+      c.heading += angleTo(c.heading, want) * Math.min(1, dt * 4); // (the short way round)
       if (c.state === 'trot' && Math.hypot(c.target.x - c.position.x, c.target.z - c.position.z) < 1) c.timer = 0;
     } else if (c.state === 'pounce') wanted = 1.6; // (a hop forward)
     c.speed += (wanted - c.speed) * Math.min(1, dt * 4);
@@ -578,12 +580,15 @@ export function createAnimals({ scene, camera, groundHeight, waterDepth = () => 
     if (isGoodGround(nx, nz)) {
       c.position.x = nx;
       c.position.z = nz;
-    } else {
-      // Blocked (water, a steep slope, the edge): head off another way
-      const a = c.heading + (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 + Math.random());
-      c.heading = a;
-      c.target.set(c.position.x + Math.sin(a) * 25, 0, c.position.z + Math.cos(a) * 25);
+    } else if ((c.state === 'trot' || c.state === 'flee') && !(c.detour > 0)) {
+      // Blocked (water, a steep slope, the edge): the best open way toward where it was going,
+      // once a second at most (M41: it used to pick a new way every frame, and spin)
+      const want = Math.atan2(c.target.x - c.position.x, c.target.z - c.position.z);
+      const a = openWay(c.position.x, c.position.z, isGoodGround, (a) => Math.cos(a - want));
+      if (a !== null) c.target.set(c.position.x + Math.sin(a) * 25, 0, c.position.z + Math.cos(a) * 25);
+      c.detour = 1; // (boxed in: it stays put)
     }
+    c.detour = (c.detour ?? 0) - dt;
     // The pose: sitting (or howling), sniffing, the pounce's leap, legs and tail
     const sitting = c.state === 'sit' || c.state === 'howl' ? 1 : 0;
     c.sit += (sitting - c.sit) * Math.min(1, dt * 4);

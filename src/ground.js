@@ -1,5 +1,34 @@
 import * as THREE from 'three';
 
+// ---------- Turning (M41) ----------
+// The shortest turn from heading `from` to heading `to` (in radians, between -π and π), however
+// many times round either one has gone. (Worked out with % instead, a turn could go the long way
+// round, since JavaScript's % keeps the minus sign: the animals whipped round in a circle.)
+export function angleTo(from, to) {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
+// When an animal's way is blocked (water, a cliff, the park's edge): the best open way to go
+// instead. It tries 16 directions, keeps the ones with good ground all the way out to `reach`
+// meters, and returns the one that scores highest (`score(angle)`: bigger is better), or null
+// if it's boxed in.
+export function openWay(x, z, isGoodGround, score, reach = 6) {
+  let best = null;
+  let bestScore = -Infinity;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const sx = Math.sin(a);
+    const sz = Math.cos(a);
+    if (![reach / 3, (reach * 2) / 3, reach].every((d) => isGoodGround(x + sx * d, z + sz * d))) continue;
+    const s = score(a);
+    if (s > bestScore) {
+      bestScore = s;
+      best = a;
+    }
+  }
+  return best;
+}
+
 // ---------- Standing on the ground (M30: "make sure nothing is sticking in the ground") ----------
 // Puts something with legs on the ground at (x, z), so that its front and back feet (`length`
 // apart) and its left and right feet (`width` apart) all touch it. On a slope it tips up or

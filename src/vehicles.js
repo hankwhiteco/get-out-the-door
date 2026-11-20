@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeStill } from './merge.js';
 import { buildHorse, buildMotorboat, buildATV } from './vehicleModels.js';
-import { restOnGround } from './ground.js';
+import { restOnGround, angleTo } from './ground.js';
 
 // ---------- Vehicles: ATV, bike, boats (and the barge), hang glider, horse and RV ----------
 // While you're riding one, it moves the camera instead of the normal walking code
@@ -745,8 +745,7 @@ export function createHorse({ scene, groundHeight, pushOutOfObstacles, isTooDeep
         if (atHome && Math.hypot(dx, dz) > 0.8) {
           wanted = GAITS[0].speed * 0.6;
           const want = Math.atan2(-dx, -dz);
-          const diff = ((want - horse.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-          horse.heading += diff * Math.min(1, dt * 2);
+          horse.heading += angleTo(horse.heading, want) * Math.min(1, dt * 2); // (the short way round: M41)
         }
       }
       horse.speed += (wanted - horse.speed) * Math.min(1, dt * (wanted > horse.speed ? 1.2 : 2.5));

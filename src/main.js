@@ -4474,7 +4474,7 @@ if (!TESTING) {
 // ---------- "Say hi!" (M38) ----------
 // A button on the start card that opens a little guestbook form (a Google Form), where players
 // can leave a nickname and a message if they'd like to. It only shows once there's a link here.
-const GUESTBOOK = '';
+const GUESTBOOK = 'https://forms.gle/7wjuHQCAc3ZNbw2C8'; // (the user's form, November 20, 2026)
 const sayHi = document.getElementById('say-hi-button');
 if (GUESTBOOK) {
   sayHi.classList.remove('hidden');
