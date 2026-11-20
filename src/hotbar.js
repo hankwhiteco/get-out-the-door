@@ -15,9 +15,10 @@ export const TOOLS = {
   sled: { name: 'Sled', icon: '🛷', about: 'On a snowy slope: point it downhill and hold on! A/D steer, S slows you down.' },
   flashlight: { name: 'Flashlight', icon: '🔦', about: 'A beam of light where you look, for hiking at night. Pick it again to switch it off.' },
   binoculars: { name: 'Binoculars', icon: '🔭', about: 'See far-off animals up close: the one in the middle gets its name. Then photograph it for your wildlife page!' },
+  backcountryTent: { name: 'Backcountry tent', icon: '🏕', about: 'Space pitches it right where you are: camp anywhere! (Each camp takes a bundle of firewood and a match for the fire.)' },
 };
 export const HOTBAR_SLOTS = 9;
-export const DEFAULT_HOTBAR = ['camera', 'rod', 'bow', 'skis', 'glider', 'sled', 'flashlight', 'binoculars', null];
+export const DEFAULT_HOTBAR = ['camera', 'rod', 'bow', 'skis', 'glider', 'sled', 'flashlight', 'binoculars', 'backcountryTent'];
 
 // A saved hotbar, checked over: 9 slots, every tool in it once (any missing go in empty slots)
 export function fixHotbar(saved) {

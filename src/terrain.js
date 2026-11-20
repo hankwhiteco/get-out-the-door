@@ -5,7 +5,7 @@ import { lakeBowl, buildStream, LAKES, lakeAt } from './water.js';
 import { skiMask, skiHeight } from './ski.js';
 import { PLACES } from './places.js';
 import { PARK } from './park.js';
-import { nearestTrackPoint } from './tracks.js';
+import { trackShelf } from './tracks.js';
 export { skiMask };
 
 // The world is a square this many meters wide, centered on (0, 0)
@@ -185,7 +185,7 @@ for (const [place, flat, blend] of [[PLACES.cabin, 5, 4], [PLACES.stable, 9, 6],
 }
 
 // The ground before the stream is cut in: natural hills, levelled along trails and at camps,
-// and flat across the ATV tracks (Bluewater Lake: see tracks.js)
+// and flat across the ATV tracks (see tracks.js)
 const TRACK_SHELF = { flat: 2.5, blend: 4.5 }; // flat out to 2.5 m from the middle, blending in over 4.5 m more
 export function heightBeforeStream(x, z) {
   let h = levelHeight(x, z, naturalHeight(x, z));
@@ -193,11 +193,8 @@ export function heightBeforeStream(x, z) {
     const d = Math.hypot(x - spot.x, z - spot.z);
     if (d < spot.flat + spot.blend) h += (spot.h - h) * smoothstep(spot.flat + spot.blend, spot.flat, d);
   }
-  const track = nearestTrackPoint(x, z, TRACK_SHELF.flat + TRACK_SHELF.blend);
-  if (track) {
-    const middle = levelHeight(track.x, track.z, naturalHeight(track.x, track.z));
-    h += (middle - h) * smoothstep(TRACK_SHELF.flat + TRACK_SHELF.blend, TRACK_SHELF.flat, track.dist);
-  }
+  const shelf = trackShelf(x, z, TRACK_SHELF.flat, TRACK_SHELF.blend, (mx, mz) => levelHeight(mx, mz, naturalHeight(mx, mz)));
+  if (shelf) h += (shelf.height - h) * shelf.weight;
   return h;
 }
 

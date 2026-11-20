@@ -54,6 +54,7 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
     const door = getRiding() === 'rv' ? rv.driverDoor() : state.insideRV ? rv.backDoor() : state.onPlatform ? state.onPlatform.bottom : null;
     parkSaves[parkId] = {
       pitched: pitchedSite ? pitchedSite.name : null,
+      wild: pitchedSite?.wild ? pitchedSite.place : null, // (a backcountry camp: where it is, M40)
       position: door ? [door.x, walkHeight(door.x, door.z) + 1.7, door.z] : camera.position.toArray(),
       look: [look.x, look.y],
       hike: hike.trail
@@ -160,7 +161,7 @@ export function createSaving({ park, parkId, camera, player, state, getRiding, r
     parkSaves = data.parks ?? { valley: { pitched: data.pitched, position: data.position, look: data.look, hike: data.hike } };
     const here = parkSaves[parkId];
     if (!here) return false; // first visit to this park
-    const site = camps.sites.find((s) => s.name === here.pitched);
+    const site = here.wild ? (pack.owned?.backcountryTent ? camps.addWild(here.wild.x, here.wild.z, here.wild.yaw) : null) : camps.sites.find((s) => s.name === here.pitched);
     if (site && (pack.owned.tent || !pack.camping)) camps.pitch(site); // (saves from before choosing had a tent)
 
     const trail = here.hike && trailById(here.hike.trailId);

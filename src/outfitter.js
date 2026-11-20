@@ -26,6 +26,7 @@ export const SHOP = [
   { id: 'marshmallows', section: 'supplies', name: 'Marshmallows', icon: '🍡', price: 3, needXP: 20, about: 'A bag of 5. Roast them over a campfire with R.' },
   { id: 'bait', section: 'supplies', name: 'Fishing bait', icon: '🪱', price: 4, needXP: 10, about: 'A tin of 5 worms. Fish bite twice as fast and tend to be bigger (one worm per catch).' },
   { id: 'firewood', section: 'supplies', name: 'Firewood', icon: '🪵', price: 3, needXP: 0, about: 'At your camp, E puts it on the fire: it roars! Meals cook better, and you can boil water there.' },
+  { id: 'matches', section: 'supplies', name: 'Matches', icon: '🔥', price: 2, needXP: 0, about: 'A box of 5 matches. Your backcountry tent’s campfire needs one (and a bundle of firewood) each time you camp.' },
   // Pantry things, for cooking (cooking.js)
   { id: 'flour', section: 'supplies', name: 'Flour', icon: '🌾', price: 2, needXP: 0, about: 'A bag of 5 scoops, for campfire pancakes and berry crumble.' },
   { id: 'butter', section: 'supplies', name: 'Butter', icon: '🧈', price: 2, needXP: 0, about: 'Five pats, for pancakes, crumble and a mushroom skillet.' },
@@ -59,6 +60,7 @@ export const SHOP = [
   { id: 'spinningRod', section: 'gear', name: 'Spinning rod', icon: '🎣', price: 45, needXP: 250, gear: true, about: 'Casts 16 m, out where the bigger fish swim. Some rare fish only bite for it, and big ones are easier to reel in.' },
   { id: 'hikingPack', section: 'gear', name: 'Hiking pack', icon: '🎒', price: 40, needXP: 200, gear: true, about: 'A bigger backpack: 18 slots, twice the room of your daypack.' },
   { id: 'bigTent', section: 'gear', name: 'Big tent', icon: '⛺', price: 60, needXP: 250, gear: true, after: 'tent', about: 'Roomy! You sleep better (wake with full water, and walking tires you less all morning), and its chest holds 18.' },
+  { id: 'backcountryTent', section: 'gear', name: 'Backcountry tent', icon: '🏕', price: 90, needXP: 800, gear: true, after: 'bigTent', about: 'A light tent for camping anywhere, off the trail: pick it on your hotbar (9) and press Space. Each camp takes a bundle of firewood and a match for the fire. You sleep as well as in the big tent.' },
   { id: 'camper', section: 'gear', name: 'Small camper', icon: '🏕', price: 150, needXP: 450, gear: true, after: 'bigTent', about: 'A little teardrop camper by the trailhead in every park: a bed, a little kitchen at the back, and a storage box (18).' },
   { id: 'rv', section: 'gear', name: 'RV camper', icon: '🚐', price: 300, needXP: 650, gear: true, after: 'camper', about: 'Parked at every park’s trailhead. Drive it, sleep in it, cook in it, and take it on road trips.' },
   { id: 'glider', section: 'gear', name: 'Hang glider', icon: '🪂', price: 120, needXP: 300, gear: true, about: 'Press 5 and launch from somewhere high, like the top of the ski run.' },
@@ -227,7 +229,7 @@ export function createOutfitter({ pack, parkName, parkId = null, recallable, len
       gear: 'Bigger gear needs more XP before you can buy it. Earn XP by hiking, photos, fishing and more (see your journal, J).',
       clothes: 'New clothes for your hiker: you put them on straight away, and they stay in your wardrobe (O). All the colors are free!',
       food: 'Drinks you have right here at the counter.',
-      supplies: `You have: 🍡 ${pack.marshmallows} marshmallows · 🪱 ${pack.bait} bait · 🪵 ${pack.firewood} firewood · 🌾 ${pack.flour} flour · 🧈 ${pack.butter} butter · 🌿 ${pack.herbs} herbs`,
+      supplies: `You have: 🍡 ${pack.marshmallows} marshmallows · 🪱 ${pack.bait} bait · 🪵 ${pack.firewood} firewood · 🔥 ${pack.matches} matches · 🌾 ${pack.flour} flour · 🧈 ${pack.butter} butter · 🌿 ${pack.herbs} herbs`,
     };
     screen.append(el('p', 'panel-hint', hints[section]));
     for (const item of SHOP.filter((i) => i.section === section && (!i.park || i.park === parkId))) {

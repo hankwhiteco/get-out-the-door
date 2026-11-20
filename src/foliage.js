@@ -193,7 +193,7 @@ export function createFoliage() {
       const fromStart = Math.hypot(x, z);
       const fromTrail = nearestTrail(x, z).dist;
       if (fromTrail < TRAIL_CLEARANCE - 1.5) continue; // nothing on the path itself
-      if (distanceToTrack(x, z) < 4) continue; // …or on an ATV track (Bluewater Lake)
+      if (distanceToTrack(x, z) < 4) continue; // …or on an ATV track
       if (camps.some((c) => Math.hypot(x - c.x, z - c.z) < CAMP_CLEARING)) continue;
       // Nothing growing in the stream or the lake (or right on the shore)
       if (stream.distance(x, z) < 4.5) continue;

@@ -261,6 +261,9 @@ export const PARKS = {
     blurb: 'Forests, Mirror Lake, the ski hill, the cabin and all the activities.',
     valleyFeatures: true, // the cabin, ski hill, Eagle Rock, corral, rink… live here
     animals: { bears: 2, bearKind: 'black', foxes: 3 }, // (M26: see animals.js)
+    // An ATV loop (M39, see tracks.js), laid out with tools/track-finder.js on gentle ground clear of
+    // the trails, campsites, water and buildings: up and down the hills of the north woods
+    atvTracks: [{ id: 'valley-track', name: 'North Woods ATV Trail', points: [[-24, -126], [-42, -135], [-57, -138], [-63, -138], [-60, -156], [-56, -167], [-43, -176], [-33, -174], [-21, -176], [-10, -171], [-6, -159], [0, -150], [-6, -138], [-15, -123]] }],
   },
 
   marine: {
@@ -291,6 +294,9 @@ export const PARKS = {
     landmark: { type: 'lighthouse', name: 'Headland Lighthouse', x: 80, z: -95 },
     islands: MARINE_ISLANDS,
     whales: { x: 122, from: -15, to: 185 }, // whales swim up and down off the southern beaches
+    // An ATV loop (M39, see tracks.js), laid out with tools/track-finder.js on gentle ground clear of
+    // the trails, campsites, water and buildings: through the coastal hills north of the trailhead
+    atvTracks: [{ id: 'coast-track', name: 'Coastal Hills ATV Trail', points: [[-45, -123], [-45, -111], [-63, -108], [-78, -120], [-78, -138], [-78, -156], [-81, -174], [-69, -171], [-51, -177], [-36, -183], [-25, -185], [-12, -180], [-3, -168], [-5, -150], [-21, -144], [-30, -147], [-48, -141]] }],
     rvParking: { x: -14, z: 10 },
     trails: [
       {
@@ -445,6 +451,9 @@ export const PARKS = {
     },
     landmark: { type: 'windmill', name: 'Old Windmill', x: 70, z: -70 },
     prairie: { lookoutNear: 'grass-bluff' }, // bison, wildflowers, and a lookout tower by this trail's summit (prairie.js)
+    // An ATV loop (M39, see tracks.js), laid out with tools/track-finder.js on gentle ground clear of
+    // the trails, campsites, water and buildings: out over the rolling prairie north of the trailhead
+    atvTracks: [{ id: 'prairie-track', name: 'Prairie ATV Loop', points: [[-21, -60], [-39, -60], [-57, -69], [-75, -78], [-75, -99], [-75, -117], [-75, -135], [-63, -141], [-48, -156], [-33, -159], [-12, -162], [0, -150], [9, -135], [15, -123], [24, -111], [9, -99], [0, -81], [-9, -63]] }],
     rvParking: { x: -14, z: 10 },
     trails: [
       {

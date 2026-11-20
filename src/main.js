@@ -66,7 +66,7 @@ import { createParkExtras } from './parkExtras.js';
 import { createCrags } from './crags.js';
 import { findParkingSpots, findLanding } from './parking.js';
 import { createFerry } from './lakeside.js';
-import { createTracks, onTrack, TRACKS } from './tracks.js';
+import { createTracks, onTrack, TRACKS, distanceToTrack } from './tracks.js';
 import { createCliffs, createClimbing } from './climbing.js';
 import { createTV } from './tv.js';
 import { createFriends } from './friends.js';
@@ -343,7 +343,7 @@ for (const trail of trails) {
   landmarks[trail.id] = objects.userData.landmarks;
 }
 
-// ---------- ATV tracks (Bluewater Lake; see tracks.js) ----------
+// ---------- ATV tracks (see tracks.js: two at Bluewater Lake, and one in three other parks) ----------
 createTracks({ scene, groundHeight, addObstacle });
 
 // ---------- Benches and logs ----------
@@ -1074,6 +1074,8 @@ function currentAction() {
         },
       };
     }
+    // (a backcountry camp: pack it up to go on, M40)
+    if (site.wild) return { hint: 'E  pack up your backcountry tent  (you can sleep here from 18:00)' + food, run: () => packUpWildCamp(site) };
     return { hint: 'Your camp  (you can sleep here from 18:00)' + food, run: () => {} };
   }
   // Nothing else here, standing still in the snow: build a snowman! (M28)
@@ -1081,6 +1083,67 @@ function currentAction() {
     return { hint: 'E  build a snowman ⛄', run: buildSnowman };
   }
   return null;
+}
+
+// ---------- The backcountry tent (M40) ----------
+// Pick it on your hotbar and press Space: you camp right where you are (on dry, fairly flat,
+// open ground, off the trails). Its campfire takes a bundle of firewood and a match. While it's
+// up it's a campsite like the others (camp.js addWild); pack it up (E) to carry on.
+//
+// Where the camp would go, if you pitched it now: { x, z (its fire), yaw }, and `why` not, if
+// it can't go here
+function wildCampSpot() {
+  const yaw = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ').y;
+  const { x: px, z: pz } = camera.position;
+  // The fire a couple of steps ahead of you, and the tent beyond it with its door facing you
+  const fx = px - Math.sin(yaw) * 2.5;
+  const fz = pz - Math.cos(yaw) * 2.5;
+  const spot = { x: fx, z: fz, yaw };
+  const no = (why) => ({ ...spot, why });
+  if (riding || state.insideRV || state.inBasement || state.onPlatform || isSwimming()) return no('not from here');
+  if (Math.hypot(px, pz) < 30) return no('too close to the trailhead. Head out into the wild!');
+  const campsite = camps.sites.find((s) => !s.wild && Math.hypot(s.center.x - fx, s.center.z - fz) < 10);
+  if (campsite) return no(`${campsite.name} is right here: pitch your tent at its fire ring (E)`);
+  // The ground it stands on: the fire, the tent and its corners, and the chest beside it
+  const world = (lx, lz) => [fx + lx * Math.cos(yaw) + lz * Math.sin(yaw), fz - lx * Math.sin(yaw) + lz * Math.cos(yaw)];
+  const points = [[0, 0], [0, -3.2], [1.3, -1.9], [-1.3, -1.9], [1.3, -4.5], [-1.3, -4.5], [2.3, -2.4], [-2.3, -2.4]].map(([lx, lz]) => world(lx, lz));
+  if (points.some(([x, z]) => Math.abs(x) > 235 || Math.abs(z) > 235)) return no('too near the edge of the park');
+  if (points.some(([x, z]) => waterDepth(x, z) > 0.01)) return no('too wet');
+  if (points.some(([x, z]) => (bridges.deckAt(x, z) ?? dock.deckAt(x, z) ?? parkCabin?.floorAt(x, z) ?? lodge?.floorAt(x, z) ?? iceAt(x, z)) !== null || shelter?.isUnder(x, z))) return no('not on a deck or a floor');
+  if (points.some(([x, z]) => nearestTrail(x, z).dist < 3.5)) return no('on the trail. Step off it a little way');
+  if (points.some(([x, z]) => distanceToTrack(x, z) < 4)) return no('on the ATV track');
+  if (points.some(([x, z]) => skiMask(x, z) > 0.05)) return no('on the ski run');
+  const heights = points.map(([x, z]) => groundHeight(x, z));
+  if (Math.max(...heights) - Math.min(...heights) > 1) return no('too steep. Find flatter ground');
+  // (and room: no tree, rock or building where the tent and the fire go)
+  for (const [[x, z], r] of [[points[1], 1.4], [points[0], 0.9]]) {
+    const test = new THREE.Vector3(x, 0, z);
+    pushOutOfObstacles(test, r);
+    if (test.x !== x || test.z !== z) return no('no room. Something’s in the way');
+  }
+  return spot;
+}
+function pitchWildCamp() {
+  const spot = wildCampSpot();
+  if (spot.why) return showToast(`🏕 Not here: ${spot.why}.`);
+  if (pack.firewood < 1 || pack.matches < 1) {
+    const need = [pack.firewood < 1 && 'a bundle of firewood', pack.matches < 1 && 'matches'].filter(Boolean).join(' and ');
+    return showToast(`🏕 You'll need ${need} to camp out here, for the campfire. The Outfitter sells both.`);
+  }
+  const site = camps.addWild(spot.x, spot.z, spot.yaw);
+  camps.pitch(site); // (any other camp is packed up: you only carry one tent)
+  backpack.take('firewood');
+  backpack.take('matches');
+  audio.rustle();
+  selectTool('backcountryTent'); // (put it away)
+  showToast(`🏕 Camp's up! You lit the fire with a match and your firewood. ${sky.isEvening ? 'Press E at the fire to sleep.' : 'You can sleep here once evening comes (E at the fire).'}`);
+  save();
+}
+function packUpWildCamp(site) {
+  camps.packUp(site);
+  audio.rustle();
+  showToast(`🏕 Tent packed up. Camp anywhere again with your backcountry tent (${hotbar.keyFor('backcountryTent')}).`);
+  save();
 }
 
 // A snowman, a couple of steps in front of you, facing you (M28: see snowmen.js)
@@ -1165,7 +1228,7 @@ const pack = {
   treasures: [], // the parks whose treasure chest you've opened
   discoveries: [], // one-time things for XP: lookout towers climbed, stargazing…
   finds: [], // rock art and fossils you've discovered: { id, name, icon } (shown in your journal)
-  laps: {}, // your best lap on each ATV track (Bluewater Lake), in seconds, by track id
+  laps: {}, // your best lap on each ATV track, in seconds, by track id
   books: {}, // the how-to books you've read to the end (books.js: M29)
   lawn: {}, // your best at the lawn games: { horseshoes: points, frisbee: throws, sack: seconds }
   wildlife: {}, // your wildlife page: each kind of animal you've photographed (wildlifeLog.js, M26)
@@ -1261,7 +1324,7 @@ const hotbar = createHotbar({
   element: document.getElementById('hotbar'),
   slots: pack.hotbar,
   locked: (id) => {
-    if (!['glider', 'sled', 'flashlight', 'binoculars'].includes(id) || pack.owned[id]) return null;
+    if (!['glider', 'sled', 'flashlight', 'binoculars', 'backcountryTent'].includes(id) || pack.owned[id]) return null;
     const item = SHOP.find((s) => s.id === id);
     return pack.xp < item.needXP ? `${item.needXP} XP` : `$${item.price}`;
   },
@@ -1376,6 +1439,10 @@ function selectTool(name) {
     showToast(shopHint('flashlight'));
     return;
   }
+  if (next === 'backcountryTent' && !pack.owned.backcountryTent) {
+    showToast(shopHint('backcountryTent'));
+    return;
+  }
   if (skates.on && next) return showToast('Take your skates off first (E).');
 
   // Skis and the sled need snow
@@ -1442,6 +1509,7 @@ function useTool() {
   if (tool === 'camera') photo.snap();
   else if (tool === 'rod') fishing.use();
   else if (tool === 'glider' && !riding) launchGlider();
+  else if (tool === 'backcountryTent') pitchWildCamp();
   else if (tool === 'bow') {
     camera.getWorldDirection(shootDirection);
     shootFrom.copy(camera.position).addScaledVector(shootDirection, 0.6);
@@ -1496,6 +1564,13 @@ function updateTools(dt) {
     prompt.classList.toggle('show', player.active);
   } else if (tool === 'bow' && !prompt.textContent) {
     prompt.textContent = 'Space  shoot an arrow   ·   H  lower the bow';
+    prompt.classList.toggle('show', player.active);
+  } else if (tool === 'backcountryTent' && !prompt.textContent) {
+    // (M40: can you camp here? And have you the firewood and a match for the fire?)
+    const spot = wildCampSpot();
+    if (spot.why) prompt.textContent = `🏕 Not here: ${spot.why}   ·   H  put the tent away`;
+    else if (pack.firewood < 1 || pack.matches < 1) prompt.textContent = '🏕 You need 🪵 firewood and 🔥 matches for the campfire (the Outfitter sells both)   ·   H  put the tent away';
+    else prompt.textContent = 'Space  pitch your backcountry tent here  (1 🪵 firewood + 1 🔥 match)   ·   H  put it away';
     prompt.classList.toggle('show', player.active);
   }
   // With the bow out, the crosshair turns red when you're aimed at a deer
@@ -1855,7 +1930,7 @@ const store = createOutfitter({
   onBuy: (item) => {
     if (pack.money < item.price || pack.xp < item.needXP || (item.after && !pack.owned[item.after])) return;
     // Things you use up go in your backpack (so there has to be room for them)
-    const carried = { snacks: 3, marshmallows: 5, bait: 5, firewood: 1, flour: 5, butter: 5, herbs: 5 }[item.id];
+    const carried = { snacks: 3, marshmallows: 5, bait: 5, firewood: 1, matches: 5, flour: 5, butter: 5, herbs: 5 }[item.id];
     if (carried && backpack.room(item.id) < carried) return backpackFull(item.name.toLowerCase());
     pack.money -= item.price;
     audio.plop?.(0.4);
@@ -1886,6 +1961,8 @@ const store = createOutfitter({
       marshmallows: 'A fresh bag of 5 marshmallows. Roast them at a campfire with R.',
       bait: 'A tin of 5 worms. Fish will bite faster, and bigger!',
       firewood: 'A bundle of firewood. At your camp, press E to put it on the fire.',
+      matches: 'A box of 5 matches, for lighting your backcountry tent’s campfire.',
+      backcountryTent: `A backcountry tent! Pick it on your hotbar (${hotbar.keyFor('backcountryTent')}) and press Space to camp anywhere. The fire takes a bundle of firewood and a match each time.`,
       flour: 'A bag of flour (5 scoops), for pancakes and crumble. Cook at your camp with C.',
       butter: 'Five pats of butter, for pancakes, crumble and a mushroom skillet.',
       herbs: 'A bunch of wild herbs (5), to season your cooking, or for a venison stew.',
@@ -3148,7 +3225,7 @@ function rideAction(x, z) {
   }
 
   if (pack.owned.atv && Math.hypot(x - atv.position.x, z - atv.position.z) < 2.5) {
-    return { hint: 'E  ride the ATV', run: () => startRiding('atv') };
+    return { hint: 'E  ride the ATV', run: () => { startRiding('atv'); trackHint(); } };
   }
   if (horse.group.visible && Math.hypot(x - horse.position.x, z - horse.position.z) < 2.8) {
     if (!pack.owned.horse) return { hint: shopHint('horse'), run: () => {} };
@@ -3266,12 +3343,21 @@ const climbing = createClimbing({
 });
 
 const climbEuler = new THREE.Euler(0, 0, 0, 'YXZ');
-// ---------- Laps of the ATV tracks (Bluewater Lake; see tracks.js) ----------
+// ---------- Laps of the ATV tracks (see tracks.js) ----------
 // Ride through the start/finish banner to start the clock, then all the way round (through
 // every quarter of the loop) and back through it: that's a lap. Leave the track and the lap
 // doesn't count. Your first lap on each track earns XP; your best time is kept.
 const lap = { track: null, quarter: -1, timing: false, seconds: 0, passed: new Set() };
 const lapTime = (seconds) => `${seconds.toFixed(1)} s`;
+// The first time you get on the ATV in a park with a track you haven't done a lap of yet, say
+// where it is (M39)
+let trackHinted = false;
+function trackHint() {
+  const track = TRACKS.find((t) => pack.laps[t.id] === undefined);
+  if (trackHinted || !track) return;
+  trackHinted = true;
+  showToast(`🏁 There's an ATV trail in this park: the ${track.name}. It's on your map (M) as a 🏁. Ride through its start banner for a lap time!`);
+}
 function updateLap(dt, vehicle) {
   if (!TRACKS.length) return;
   const here = onTrack(vehicle.position.x, vehicle.position.z);
@@ -3437,8 +3523,8 @@ const foraging = createForaging({
       }
     : null,
   treeSpots,
-  // (and nothing growing at the picnic shelter)
-  isGoodSpot: (x, z) => isGoodGround(x, z) && nearestTrail(x, z).dist > 3 && Math.hypot(x - spots.shelter.x, z - spots.shelter.z) > 9,
+  // (and nothing growing at the picnic shelter, or on an ATV track)
+  isGoodSpot: (x, z) => isGoodGround(x, z) && nearestTrail(x, z).dist > 3 && Math.hypot(x - spots.shelter.x, z - spots.shelter.z) > 9 && distanceToTrack(x, z) > 4,
 });
 function forage(spot) {
   if (!backpack.room(spot.type)) return backpackFull(spot.name.toLowerCase());
@@ -4145,7 +4231,7 @@ function frame(time) {
 renderer.setAnimationLoop(frame);
 
 // Handy for poking around in the browser console
-window.game = { badges, traversePanel, traverseLeg, traverseSpots, continueTraverse, traverseAction, library, waterTaxi, inBasement: () => state.inBasement, lodge: () => lodge, cafe, eating: () => state.eating, spotsTook: () => spotsTook, parkCabin: () => parkCabin, ownsCabin, cabinAction, seasonFx, seasons, terrainMesh, snowmen: () => snowmen, iceAt, snowHere, frozen: () => frozenWater, buildSnowman, iceHole, dog: () => dog, openAdopt, dogFinds, adoption, makeDog, forgetDog, dogDrinkSpot, dogMode, dogBowl, updateDog, getOff, parkATV, animals, birds, wildlifeLog, wildThings, bearVisit, contest, barge, cargo: () => cargo, dockBoat, ferry, tracks: TRACKS, lap, friends, party, picnic, lawnGames, wardrobe, shelter, goToShelter, camper, celebrateLevel, backpack, backpackScreen, hotbar, chests, openChest, cooking, cook, tool: () => tool, store, travel, outfitterPlace, parkId: PARK_ID, snapshot: () => saving.snapshot(), currentAction: () => currentAction(), crags, slopeAt, isCliff, climbing, topOut: () => climbing.topOut, desert, stargazing: () => state.stargazing, seaScope: () => state.seaScope, prairie, onPlatform: () => state.onPlatform, seaside, lakeside, foraging, spots, hitch, showOwnedThings, mp, rv, rvHome, parkRV, goToPark, shopHint, horse, rink, stable, foraging, isSkating: () => skates.on, tick: frame, frameTimes, renderer, bike, zipline, archery, cabin, cabinSpots, awardXP, isSwimming, radio, atv, boat, glider, music, riding: () => riding, lift, pack, selectTool, fishing, wildlife, weather, audio, walkHeight, waterDepth, bridges, scene, camera, player, foliage, hike, trails, completed, startTrail, energy, rest, sky, camps, photo, journal, sights, map };
+window.game = { wildCampSpot, pitchWildCamp, badges, traversePanel, traverseLeg, traverseSpots, continueTraverse, traverseAction, library, waterTaxi, inBasement: () => state.inBasement, lodge: () => lodge, cafe, eating: () => state.eating, spotsTook: () => spotsTook, parkCabin: () => parkCabin, ownsCabin, cabinAction, seasonFx, seasons, terrainMesh, snowmen: () => snowmen, iceAt, snowHere, frozen: () => frozenWater, buildSnowman, iceHole, dog: () => dog, openAdopt, dogFinds, adoption, makeDog, forgetDog, dogDrinkSpot, dogMode, dogBowl, updateDog, getOff, parkATV, animals, birds, wildlifeLog, wildThings, bearVisit, contest, barge, cargo: () => cargo, dockBoat, ferry, tracks: TRACKS, lap, friends, party, picnic, lawnGames, wardrobe, shelter, goToShelter, camper, celebrateLevel, backpack, backpackScreen, hotbar, chests, openChest, cooking, cook, tool: () => tool, store, travel, outfitterPlace, parkId: PARK_ID, snapshot: () => saving.snapshot(), currentAction: () => currentAction(), crags, slopeAt, isCliff, climbing, topOut: () => climbing.topOut, desert, stargazing: () => state.stargazing, seaScope: () => state.seaScope, prairie, onPlatform: () => state.onPlatform, seaside, lakeside, foraging, spots, hitch, showOwnedThings, mp, rv, rvHome, parkRV, goToPark, shopHint, horse, rink, stable, foraging, isSkating: () => skates.on, tick: frame, frameTimes, renderer, bike, zipline, archery, cabin, cabinSpots, awardXP, isSwimming, radio, atv, boat, glider, music, riding: () => riding, lift, pack, selectTool, fishing, wildlife, weather, audio, walkHeight, waterDepth, bridges, scene, camera, player, foliage, hike, trails, completed, startTrail, energy, rest, sky, camps, photo, journal, sights, map };
 
 // ---------- Settings: field of view, mouse sensitivity, volume ----------
 const settings = loadSettings();

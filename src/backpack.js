@@ -16,7 +16,8 @@ export const ITEMS = {
   snacks: { name: 'Trail mix', icon: '🥜', stack: 6, about: 'Eat it with Q when you’re tired. You pack fresh trail mix every morning.' },
   marshmallows: { name: 'Marshmallows', icon: '🍡', stack: 20, about: 'Roast them at your campfire with R.' },
   bait: { name: 'Bait worms', icon: '🪱', stack: 20, about: 'Fish bite faster, and bigger. One per catch.' },
-  firewood: { name: 'Firewood', icon: '🪵', stack: 3, about: 'Press E at your camp to make the fire roar.' },
+  firewood: { name: 'Firewood', icon: '🪵', stack: 3, about: 'Press E at your camp to make the fire roar. (Your backcountry tent’s fire needs a bundle too.)' },
+  matches: { name: 'Matches', icon: '🔥', stack: 20, about: 'For lighting the campfire at your backcountry tent: one each time you camp.' },
   // Pantry things from the Outfitter, for cooking (cooking.js)
   flour: { name: 'Flour', icon: '🌾', stack: 10, about: 'For campfire pancakes and berry crumble.' },
   butter: { name: 'Butter', icon: '🧈', stack: 10, about: 'For pancakes, crumble and a mushroom skillet.' },

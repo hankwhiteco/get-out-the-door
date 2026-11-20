@@ -9,6 +9,7 @@ export const CAMP_DISTANCE = 4;
 const COLORS = {
   tent: 0xe07a3a,
   bigTent: 0x4f8a5a,
+  backcountry: 0x3f78b5,
   tentDoor: 0x5a2e14,
   stone: 0x8a867c,
   log: 0x5e4029,
@@ -20,52 +21,66 @@ const COLORS = {
 // The two tents: the small one you start with, and the big one from the Outfitter (M20)
 const SMALL_TENT = { width: 1.1, height: 1.3, length: 2.3, color: COLORS.tent, door: 0.45 }; // (width: half of it)
 const BIG_TENT = { width: 1.6, height: 1.9, length: 3.2, color: COLORS.bigTent, door: 0.65, awning: true };
+// The backcountry tent (M40): a light, low one for camping anywhere, off the trail
+const BACKCOUNTRY_TENT = { width: 1.2, height: 1.15, length: 2.6, color: COLORS.backcountry, door: 0.45 };
 
 // Builds the campsites. Each one has a fire ring and a sign from the start; the tent, its
 // storage chest and the fire only appear once you pitch camp there.
 // isClear(x, z): is there room for the chest there (no rock or cactus in the way)?
+// (M40: a backcountry camp is one more, made wherever you pitch your backcountry tent and gone
+// again when you pack it up. It has no sign, and its own tent.)
 export function createCampsites(trails, groundHeight, addObstacle, removeObstacle, isClear = () => true) {
   const group = new THREE.Group();
   const sites = [];
   let big = false; // (got the big tent? setBigTent)
   let bearBoxes = false; // (got a bear box? setBearBox: it stands beside your tent, M26)
 
-  for (const trail of trails) for (const camp of trail.camps) {
-    const spot = pointBesideTrail(trail.path, camp.at, camp.side);
-    const y = groundHeight(spot.x, spot.z);
-    // Turn the campsite so its front (+z) faces the trail
-    const yaw = spot.outward + Math.PI;
-
+  // One campsite round its fire ring at (x, z), its front (+z) turned by `yaw`
+  function buildSite({ x, z, yaw, name, trailId = null, wild = false }) {
+    const y = groundHeight(x, z);
     const site = new THREE.Group();
-    site.position.set(spot.x, y, spot.z);
+    site.position.set(x, y, z);
     site.rotation.y = yaw;
     group.add(site);
 
     // Convert a position inside the campsite (local) to a position in the world
     const toWorld = (lx, lz) => {
       const v = new THREE.Vector3(lx, 0, lz).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-      const wx = spot.x + v.x;
-      const wz = spot.z + v.z;
+      const wx = x + v.x;
+      const wz = z + v.z;
       return new THREE.Vector3(wx, groundHeight(wx, wz), wz);
     };
 
     // Fire ring (always there)
     site.add(createFireRing());
-    addObstacle(spot.x, spot.z, 0.7);
+    const ringObstacle = addObstacle(x, z, 0.7);
 
-    // Sign near the trail
-    const sign = createSign(['Campsite', camp.name]);
-    sign.position.set(2.8, toWorld(2.8, 4).y - y, 4); // y: match the ground there
-    sign.scale.setScalar(0.8);
-    site.add(sign);
+    // Sign near the trail (not at a backcountry camp)
+    if (!wild) {
+      const sign = createSign(['Campsite', name]);
+      sign.position.set(2.8, toWorld(2.8, 4).y - y, 4); // y: match the ground there
+      sign.scale.setScalar(0.8);
+      site.add(sign);
+    }
 
-    // The tent, behind the fire with its door facing it (hidden until you pitch camp): both
-    // sizes are here, and the one you have shows. Your storage chest goes beside it.
-    const tents = { small: createTent(SMALL_TENT), big: createTent(BIG_TENT) };
+    // The tent, behind the fire with its door facing it (hidden until you pitch camp): at a
+    // campsite both sizes are here, and the one you have shows; a backcountry camp has the
+    // backcountry tent. Your storage chest goes beside it.
+    const tents = wild ? { backcountry: createTent(BACKCOUNTRY_TENT) } : { small: createTent(SMALL_TENT), big: createTent(BIG_TENT) };
     for (const tent of Object.values(tents)) {
       tent.position.set(0, toWorld(0, -3.2).y - y, -3.2);
       tent.visible = false;
       site.add(tent);
+    }
+    // (out in the wild the ground isn't levelled like a campsite's, so the backcountry tent
+    // tilts to sit on the slope)
+    if (wild) {
+      const { width, length } = BACKCOUNTRY_TENT;
+      const front = toWorld(0, -3.2 + length / 2).y;
+      const back = toWorld(0, -3.2 - length / 2).y;
+      const right = toWorld(width, -3.2).y;
+      const left = toWorld(-width, -3.2).y;
+      tents.backcountry.rotation.set(Math.atan2(back - front, length), 0, Math.atan2(right - left, width * 2));
     }
     const chest = createChestModel();
     chest.visible = false;
@@ -90,17 +105,20 @@ export function createCampsites(trails, groundHeight, addObstacle, removeObstacl
 
     // Draw each part as one piece: the fire ring and sign, each tent, the chest, and the fire's
     // logs (the tents, chest and fire are shown and hidden, and the flames flicker, so they stay apart)
-    mergeStill(site, [tents.small, tents.big, chest, bearBox, fire.group]);
-    mergeStill(tents.small);
-    mergeStill(tents.big);
+    mergeStill(site, [...Object.values(tents), chest, bearBox, fire.group]);
+    for (const tent of Object.values(tents)) mergeStill(tent);
     mergeStill(chest);
     mergeStill(bearBox);
     mergeStill(fire.group, [fire.flames]);
 
-    sites.push({
-      name: camp.name,
-      trailId: trail.id,
-      center: new THREE.Vector3(spot.x, y, spot.z),
+    const record = {
+      name,
+      trailId,
+      wild,
+      place: { x, z, yaw }, // (for saving a backcountry camp)
+      model: site,
+      ringObstacle,
+      center: new THREE.Vector3(x, y, z),
       pitched: false,
       tents,
       chest,
@@ -111,9 +129,27 @@ export function createCampsites(trails, groundHeight, addObstacle, removeObstacl
       tentObstacle: null,
       fire,
       // Where you wake up: next to the tent, looking east toward the sunrise
-      wakePosition: pickWakeSpot(toWorld(0, -3.2), spot, groundHeight),
+      wakePosition: pickWakeSpot(toWorld(0, -3.2), { x, z }, groundHeight),
       wakeYaw: -Math.PI / 2,
-    });
+    };
+    sites.push(record);
+    return record;
+  }
+
+  for (const trail of trails) {
+    for (const camp of trail.camps) {
+      const spot = pointBesideTrail(trail.path, camp.at, camp.side);
+      // (turned so its front faces the trail)
+      buildSite({ x: spot.x, z: spot.z, yaw: spot.outward + Math.PI, name: camp.name, trailId: trail.id });
+    }
+  }
+
+  // A backcountry camp, once it's packed up, goes altogether
+  function removeSite(site) {
+    group.remove(site.model);
+    site.model.traverse((o) => o.geometry?.dispose());
+    removeObstacle(site.ringObstacle);
+    sites.splice(sites.indexOf(site), 1);
   }
 
   const campsites = {
@@ -127,8 +163,18 @@ export function createCampsites(trails, groundHeight, addObstacle, removeObstacl
 
     // Put up the tent and light the fire. You only carry one tent, so any other camp is packed up.
     pitch(site) {
-      for (const other of sites) if (other.pitched) setPitched(other, false);
+      for (const other of [...sites]) if (other.pitched && other !== site) setPitched(other, false);
       setPitched(site, true);
+    },
+
+    // A backcountry camp (M40) round a fire at (x, z), facing `yaw` (pitch it next)
+    addWild(x, z, yaw) {
+      return buildSite({ x, z, yaw, name: 'Backcountry camp', wild: true });
+    },
+
+    // Pack up a camp (a backcountry one goes altogether)
+    packUp(site) {
+      setPitched(site, false);
     },
 
     // Got the big tent? Then that's the one you pitch (and the one up now, if you're camping)
@@ -168,8 +214,8 @@ export function createCampsites(trails, groundHeight, addObstacle, removeObstacl
   function setPitched(site, pitched) {
     if (!(pitched && site.pitched)) site.roaring = false; // (swapping tents keeps the fire going)
     site.pitched = pitched;
-    site.tents.small.visible = pitched && !big;
-    site.tents.big.visible = pitched && big;
+    const showing = site.wild ? 'backcountry' : big ? 'big' : 'small';
+    for (const [kind, tent] of Object.entries(site.tents)) tent.visible = pitched && kind === showing;
     site.chest.visible = pitched;
     site.bearBox.visible = pitched && bearBoxes;
     site.fire.group.visible = pitched;
@@ -188,8 +234,9 @@ export function createCampsites(trails, groundHeight, addObstacle, removeObstacl
       const boxSpot = site.chestSpots.find((s) => s !== spot && isClear(s.world.x, s.world.z)) ?? site.chestSpots.find((s) => s !== spot);
       site.bearBox.position.set(boxSpot.lx, boxSpot.ly, boxSpot.lz);
       site.bearBox.rotation.y = boxSpot.turn;
-      site.tentObstacle = addObstacle(site.tentPosition.x, site.tentPosition.z, big ? 1.7 : 1.2);
+      site.tentObstacle = addObstacle(site.tentPosition.x, site.tentPosition.z, site.wild ? 1.2 : big ? 1.7 : 1.2);
     }
+    if (!pitched && site.wild) removeSite(site);
   }
 
   return campsites;

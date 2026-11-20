@@ -3,10 +3,13 @@ import { PARK } from './park.js';
 import { mergeStill } from './merge.js';
 import { createSign } from './trail.js';
 
-// ---------- ATV tracks (Bluewater Lake) ----------
-// Dirt loops on the islands for your ATV (or bike): one in Cedar Island's west woods (with a
-// dirt spur from the trailhead), and one round Moose Island (take the ATV over on the
-// motorboat's barge). Ride all the way round, through the start/finish banner, for a lap time.
+// ---------- ATV tracks ----------
+// Dirt loops for your ATV (or bike). Bluewater Lake has two on its islands: one in Cedar Island's
+// west woods (with a dirt spur from the trailhead), and one round Moose Island (take the ATV over
+// on the motorboat's barge). M39 added one to three more parks: the North Woods in Pinewood
+// Valley, the prairie and the Seabreeze coast's hills. (None in the desert, by choice, or on
+// Summit Peaks, which is too steep.)
+// Ride all the way round, through the start/finish banner, for a lap time.
 //
 // Each track in park.js: { id, name, points: [[x, z]…] (the loop), spur: [[x, z]…] (optional,
 // a dirt track leading to it) }.
@@ -64,31 +67,36 @@ export function distanceToTrack(x, z, within = 10) {
   return best;
 }
 
-// The nearest point on the middle of any track (or spur) to (x, z), if it's within `within`
-// meters: { dist, x, z } (otherwise null). terrain.js uses it to make the ground flat across
-// each track: a shelf cut into the hillside, the way real dirt tracks are.
-export function nearestTrackPoint(x, z, within) {
-  let best = null;
+// How the ground is cut flat across the tracks, like a shelf in the hillside (terrain.js uses
+// it): at (x, z), how much the shelf counts (`weight`: 1 on the track, fading to 0 by `flat +
+// blend` meters off it) and the height it's cut at (`height`). That's the middle of the track
+// nearby, averaged over all the bits of it within reach: so where two bits of track come close
+// (round a tight bend, M39), the ground between them slopes smoothly from one to the other
+// instead of stepping. `middleHeight(x, z)`: the ground's height along the middle of the track
+// (worked out once for each point along it).
+export function trackShelf(x, z, flat, blend, middleHeight) {
+  const reach = flat + blend;
+  let weight = 0;
+  let sum = 0;
+  let total = 0;
   for (const track of TRACKS) {
     for (const path of [track.loop, track.spur]) {
       if (!path) continue;
-      const near = nearestOn(path, x, z, within);
-      if (!near || near.dist > within || (best && near.dist >= best.dist)) continue;
-      // (between the two nearest points along the track, so the shelf has no steps in it)
-      const { samples } = path;
-      const p = samples[near.index];
-      const before = samples[Math.max(0, near.index - 1)];
-      const after = samples[Math.min(samples.length - 1, near.index + 1)];
-      const q = Math.hypot(x - before.x, z - before.z) < Math.hypot(x - after.x, z - after.z) ? before : after;
-      const dx = q.x - p.x;
-      const dz = q.z - p.z;
-      const t = Math.max(0, Math.min(1, ((x - p.x) * dx + (z - p.z) * dz) / (dx * dx + dz * dz || 1)));
-      const cx = p.x + dx * t;
-      const cz = p.z + dz * t;
-      best = { dist: Math.hypot(x - cx, z - cz), x: cx, z: cz };
+      const { box } = path;
+      if (x < box.minX - reach || x > box.maxX + reach || z < box.minZ - reach || z > box.maxZ + reach) continue;
+      for (const p of path.samples) {
+        const d = Math.hypot(x - p.x, z - p.z);
+        if (d >= reach) continue;
+        const t = Math.min(1, (reach - d) / blend);
+        const w = t * t * (3 - 2 * t);
+        p.middle ??= middleHeight(p.x, p.z);
+        sum += p.middle * w;
+        total += w;
+        weight = Math.max(weight, w);
+      }
     }
   }
-  return best;
+  return total ? { weight, height: sum / total } : null;
 }
 
 // Which loop (x, z) is on, and how far round it: { track, dist, along (0 to 1) }, or null

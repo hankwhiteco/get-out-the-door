@@ -846,7 +846,16 @@ export async function runSelfTest({ only = null } = {}) {
     // Photograph it
     const [id] = g.wildThings().filter((t) => t.size === 1.4).map((t) => t.id);
     delete pack.wildlife[id];
-    standAt(p.x + 15, p.z, p.x, p.z);
+    // (from whichever side has nothing in the way, like a butte: M39)
+    const side = [[15, 0], [-15, 0], [0, 15], [0, -15]].find(([dx, dz]) => {
+      const eye = g.walkHeight(p.x + dx, p.z + dz) + 1.7 + 2;
+      for (let k = 0.1; k < 1; k += 0.1) {
+        const sight = p.y + 0.7 + (eye - p.y - 0.7) * k;
+        if (g.walkHeight(p.x + dx * k, p.z + dz * k) > sight - 0.2) return false;
+      }
+      return true;
+    }) ?? [15, 0];
+    standAt(p.x + side[0], p.z + side[1], p.x, p.z);
     g.selectTool('camera');
     tick(20);
     g.camera.position.y += 2; // (a bit higher, so no bump in the ground hides it)
@@ -1822,6 +1831,73 @@ export async function runSelfTest({ only = null } = {}) {
     }
   });
 
+  // ---------- The backcountry tent (M40): camp anywhere, with firewood and a match ----------
+  await part('backcountry tent', async () => {
+    pack.money = Math.max(pack.money, 300);
+    pack.xp = Math.max(pack.xp, 900);
+    pack.owned.tent = true;
+    pack.owned.bigTent = true;
+    delete pack.owned.backcountryTent;
+    g.backpack.take('firewood', pack.firewood);
+    g.backpack.take('matches', pack.matches);
+    g.store.open('gear');
+    buy('gear', 'Backcountry tent');
+    g.store.close();
+    await keepPlaying();
+    check('buy the backcountry tent (on the hotbar)', !!pack.owned.backcountryTent && g.hotbar.slots.includes('backcountryTent'));
+    // Somewhere out in the park with room for a camp, looking outward
+    let found = false;
+    for (let r = 45; r < 200 && !found; r += 12) {
+      for (let a = 0; a < Math.PI * 2 && !found; a += 0.4) {
+        const x = Math.cos(a) * r;
+        const z = Math.sin(a) * r;
+        for (let look = 0; look < 4 && !found; look++) {
+          const b = a + (look * Math.PI) / 2;
+          standAt(x, z, x + Math.cos(b) * 10, z + Math.sin(b) * 10);
+          found = !g.wildCampSpot().why;
+        }
+      }
+    }
+    check('find somewhere to camp out', found, g.wildCampSpot().why);
+    if (!found) return;
+    const where = g.camera.position.clone();
+    const lookTo = g.camera.getWorldDirection(where.clone()).multiplyScalar(10).add(where); // (the way you're facing)
+    if (g.tool() !== 'backcountryTent') g.selectTool('backcountryTent');
+    press('Space');
+    check('no camping out without firewood and matches', !g.camps.sites.some((s) => s.wild) && /firewood/.test(hint()), hint());
+    g.store.open('supplies');
+    buy('supplies', 'Firewood');
+    buy('supplies', 'Matches');
+    g.store.close();
+    await keepPlaying();
+    check('buy matches (a box of 5)', pack.matches === 5 && pack.firewood === 1);
+    standAt(where.x, where.z, lookTo.x, lookTo.z);
+    if (g.tool() !== 'backcountryTent') g.selectTool('backcountryTent');
+    press('Space');
+    const camp = g.camps.sites.find((s) => s.wild);
+    check('pitch it right here, and light the fire', !!camp?.pitched && camp.tents.backcountry.visible && camp.fire.group.visible && pack.firewood === 0 && pack.matches === 4, g.wildCampSpot().why);
+    if (!camp) return;
+    check('only one camp up at a time', g.camps.sites.filter((s) => s.pitched).length === 1);
+    check('a backcountry camp is saved', !!g.snapshot().parks[g.parkId].wild);
+    // Sleep there, and pack it up in the morning
+    const atFire = () => {
+      const away = camp.center.clone().sub(camp.tentPosition).setY(0).normalize();
+      standAt(camp.center.x + away.x * 1.8, camp.center.z + away.z * 1.8);
+    };
+    g.sky.setHour(21);
+    atFire();
+    document.getElementById('toast').textContent = '';
+    press('KeyE');
+    await waitUntil(() => /Good morning/.test(document.getElementById('toast').textContent), 6);
+    tick();
+    check('sleep at a backcountry camp', /Good morning/.test(document.getElementById('toast').textContent) && camp.pitched);
+    await keepPlaying();
+    atFire();
+    check('pack it up in the morning (E)', /pack up/.test(hint()), hint());
+    press('KeyE');
+    check('packed up: the camp is gone', !g.camps.sites.some((s) => s.wild) && !g.snapshot().parks[g.parkId].wild);
+  });
+
   // ---------- This park's special things ----------
   if (g.rink.group.visible) {
     await part('skating', () => {
@@ -1991,7 +2067,7 @@ export async function runSelfTest({ only = null } = {}) {
     });
   }
 
-  // ---------- Bluewater Lake: a lap of an ATV track, and the loons ----------
+  // ---------- A lap of an ATV track (Bluewater Lake, and M39: the valley, prairie and coast) ----------
   if (g.tracks?.length) {
     await part('ATV track', async () => {
       const track = g.tracks[0];
@@ -2028,6 +2104,10 @@ export async function runSelfTest({ only = null } = {}) {
       check('nothing in the way on the tracks', pushed < 0.2, `pushed ${pushed.toFixed(2)} m`);
       press('KeyE');
     });
+  }
+
+  // ---------- Bluewater Lake: the loons ----------
+  if (g.lakeside?.loons) {
     await part('loons', () => {
       const loons = g.lakeside.loons;
       const from = loons.map((loon) => loon.group.position.clone());
